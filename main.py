@@ -1,10 +1,10 @@
-from obj_functions import open_obj_file, calculate_box, build_triangles, find_centroids, plot_obj_file
+from obj_functions import open_obj_file, calculate_box_AABB, build_triangles, find_centroids, plot_obj_file, plot_bbox, plot_layer
 from bvh import BVHNode
 from AABB import AABB
 from triangle import Triangle
 import statistics
 import sys
-
+from collections import defaultdict
 
 #vertices coordiantes
 verticesX = []
@@ -51,16 +51,16 @@ def build(node_list):
     
     root = BVHNode(obj_list_copy)
 
-    mins, maxs = calculate_box(obj_list_copy)
-    world_box = AABB(mins, maxs)
+    world_box = calculate_box_AABB(obj_list_copy)
+    print(f"Root node bbox, mins:{world_box.mins}, maxs:{world_box.maxs}")
 
     root.set_bbox(world_box)
     node_list.append(root)
 
-    build_recursive(0, len(obj_list_copy), root, 0, node_list, obj_list_copy)
+    build_recursive(root, 0, node_list)
     return node_list
 
-def build_recursive(left_index, right_index, node, depth, node_list, obj_list_copy):
+def build_recursive(node, depth, node_list):
     """Next iterations of the recursion, creation of the root node children"""
 
     print("--------------------------------------------------------------------------------------")
@@ -71,14 +71,17 @@ def build_recursive(left_index, right_index, node, depth, node_list, obj_list_co
     vertices_z = []
     obj_list_node = node.triangles
     median_split = False
+    node.set_depth(depth)
+
+    left_index = 0
+    right_index = len(obj_list_node)
 
     print(f"left_index: {left_index}")
     print(f"right_index: {right_index}")
     print(f"right_index - left_index: {right_index - left_index}")
-    
+
     if right_index - left_index <= 64:
         node.make_leaf()
-        node.set_depth(depth)
         print("Make leaf!")
         return node_list
     else:
@@ -103,6 +106,10 @@ def build_recursive(left_index, right_index, node, depth, node_list, obj_list_co
         axis_x_len = abs(max(vertices_x) - min(vertices_x))
         axis_y_len = abs(max(vertices_y) - min(vertices_y))
         axis_z_len = abs(max(vertices_z) - min(vertices_z))
+
+        print(f"axis_x_len: {axis_x_len}")
+        print(f"axis_y_len: {axis_y_len}")
+        print(f"axis_z_len: {axis_z_len}")
 
         axis_len = {
             "x": axis_x_len,
@@ -130,14 +137,19 @@ def build_recursive(left_index, right_index, node, depth, node_list, obj_list_co
         centres = []
         if max_len_axis == "x":
             centres = obj_centroid_x
+            print(f"Max axis: {max_len_axis}")
         elif max_len_axis == "y":
             centres = obj_centroid_y
+            print(f"Max axis: {max_len_axis}")
         elif max_len_axis == "z":
             centres = obj_centroid_z
+            print(f"Max axis: {max_len_axis}")
 
         left_index_pop = 0
         right_index_pop = 0
         split_index_min = min(centres) + split_index_val
+
+        print(f"split_index_min: {split_index_min}")
 
         for centre in centres:
             if centre < split_index_min:
@@ -149,7 +161,7 @@ def build_recursive(left_index, right_index, node, depth, node_list, obj_list_co
         print(f"right_index_pop: {right_index_pop}")
 
         axis_median = 0
-        if left_index_pop < 5 or right_index_pop < 5:
+        if left_index_pop <= 16 or right_index_pop <= 16:
             median_split = True
             axis_median = statistics.median(centres)
             print(f"axis_median: {axis_median}")
@@ -166,6 +178,8 @@ def build_recursive(left_index, right_index, node, depth, node_list, obj_list_co
                 obj_list_node_sorted = sorted(obj_list_node, key=lambda triangle: triangle.centroid[1])
             elif max_len_axis == "z":
                 obj_list_node_sorted = sorted(obj_list_node, key=lambda triangle: triangle.centroid[2])
+
+        print(f"obj_list_node_sorted: {obj_list_node_sorted}")
 
         if median_split == True:
             split_index_min = axis_median
@@ -191,39 +205,64 @@ def build_recursive(left_index, right_index, node, depth, node_list, obj_list_co
 
         print(f"Len obj_list_node_sorted: {len(obj_list_node_sorted)}")
         if right_index - left_index < 20:
-            print(f"obj_list_copy[left_index:split_index]: {obj_list_copy[left_index:split_index]}")
-            print(f"obj_list_copy[split_index:right_index]: {obj_list_copy[split_index:right_index]}")
+            print(f"obj_list_copy[left_index:split_index]: {obj_list_node_sorted[left_index:split_index]}")
+            print(f"obj_list_copy[split_index:right_index]: {obj_list_node_sorted[split_index:right_index]}")
         
-        print(f"len(obj_list_copy[left_index:split_index]) : {len(obj_list_copy[left_index:split_index])}")
-        print(f"len(obj_list_copy[split_index:right_index]) : {len(obj_list_copy[split_index:right_index])}")
-        left_index_box = calculate_box(obj_list_copy[left_index:split_index])
-        right_index_box = calculate_box(obj_list_copy[split_index:right_index])
+        print(f"len(obj_list_copy[left_index:split_index]) : {len(obj_list_node_sorted[left_index:split_index])}")
+        print(f"len(obj_list_copy[split_index:right_index]) : {len(obj_list_node_sorted[split_index:right_index])}")
+        left_index_box = calculate_box(obj_list_node_sorted[left_index:split_index])
+        right_index_box = calculate_box(obj_list_node_sorted[split_index:right_index])
         # Initiate current node as an interior node with leftNode and rightNode as children
-        node.left = BVHNode(obj_list_copy[left_index:split_index])
-        node.right = BVHNode(obj_list_copy[split_index:right_index])
+        node.left = BVHNode(obj_list_node_sorted[left_index:split_index])
+        node.right = BVHNode(obj_list_node_sorted[split_index:right_index])
 
         node.left.bbox = left_index_box
         node.right.bbox = right_index_box
 
         node_list.append(node.left)
         node_list.append(node.right)
-        build_recursive(left_index, split_index, node.left, depth + 1, node_list, obj_list_copy)
-        build_recursive(split_index, right_index, node.right, depth + 1, node_list, obj_list_copy)
+        build_recursive(node.left, depth + 1, node_list)
+        build_recursive(node.right, depth + 1, node_list)
         
 
 def main():
     node_list = []
     node_list = build(node_list)
-    print(node_list)
+    print(f"Len: {len(node_list)}")
 
-    bbox = []
+    # i = 0
+    # for node in node_list:
+    #     plot_bbox(node.get_bbox(), node.get_triangles(), i, node.get_depth())
+    #     i += 1
+
+    node_list_depth = defaultdict(list)
     for node in node_list:
-        bbox.append(node.bbox)
+        node_list_depth[node.get_depth()].append(node.get_bbox())
     
-    print(bbox)
+    # for i in node_list_depth:
+    #     print(f"depth {i}: {node_list_depth[i]}, {node_list_depth[i]}")
+
+    first_two = dict(list(node_list_depth.items())[:2])
+
+    print("=========================================================")
+
+    # print(f"first_two: {first_two}")
+    # layer_1_A = node_list_depth[1][0]
+    # layer_1_B = node_list_depth[1][1]
+    # print(f"layer_1_A_mins: {layer_1_A.mins}")
+    # print(f"layer_1_A_maxs: {layer_1_A.maxs}")
+    # print(f"layer_1_B_mins: {layer_1_B.mins}")
+    # print(f"layer_1_B_maxs: {layer_1_B.maxs}")
+
+    for layer in node_list_depth:
+        print(f"Layer: {layer}, length: {len(node_list_depth[layer])}")
+
+    plot_layer(node_list_depth)
+        
 
 if __name__ == "__main__":
+    sys.stdout = open(r"D:\OneDrive\Pulpit\Praca_Magisterska\log.txt", 'w')
     main()
-
+    
 
 

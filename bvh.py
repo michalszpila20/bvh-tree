@@ -16,3 +16,12 @@ class BVHNode:
 
     def set_depth(self, object):
         self.depth = object
+
+    def get_bbox(self):
+        return self.bbox
+    
+    def get_triangles(self):
+        return self.triangles
+    
+    def get_depth(self):
+        return self.depth
