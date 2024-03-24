@@ -5,6 +5,8 @@ import time
 from AABB import AABB
 import plotly.express as px
 import plotly
+import math
+from sphere import sphere 
 
 def open_obj_file():
 
@@ -24,7 +26,7 @@ def open_obj_file():
     verticesK = []
 
     # options: bear / cow / teapot / pumpkin
-    file = open(r"D:\OneDrive\Pulpit\Praca_Magisterska\pumpkin.obj.txt")
+    file = open(r"D:\OneDrive\Pulpit\Praca_Magisterska\teapot.obj.txt")
 
     Lines = file.readlines()
 
@@ -44,7 +46,7 @@ def open_obj_file():
  
     return verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK
 
-def plot_obj_file(verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK, min_s = [0,0,0], max_s = [0, 0, 0]):
+def plot_obj_file(verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK):
     fig2 = go.Figure(data=[
     go.Mesh3d(
         x=verticesX,
@@ -60,21 +62,27 @@ def plot_obj_file(verticesX, verticesY, verticesZ, verticesI, verticesJ, vertice
         )
     ])
 
-    fig2.add_trace(go.Mesh3d(
-        x=[0.608, 0.608, 0.998, 0.998, 0.608, 0.608, 0.998, 0.998],
-        y=[0.091, 0.963, 0.963, 0.091, 0.091, 0.963, 0.963, 0.091],
-        z=[0.140, 0.140, 0.140, 0.140, 0.571, 0.571, 0.571, 0.571],
+    # fig2.add_trace(go.Mesh3d(
+    #     x=[0.608, 0.608, 0.998, 0.998, 0.608, 0.608, 0.998, 0.998],
+    #     y=[0.091, 0.963, 0.963, 0.091, 0.091, 0.963, 0.963, 0.091],
+    #     z=[0.140, 0.140, 0.140, 0.140, 0.571, 0.571, 0.571, 0.571],
 
-        i = [7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
-        j = [3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
-        k = [0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
-        color='cyan',
-        opacity=0.50,
-        flatshading = True))
+    #     i = [7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
+    #     j = [3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
+    #     k = [0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
+    #     color='cyan',
+    #     opacity=0.50,
+    #     flatshading = True))
+
+    fig2.add_trace(
+    go.Scatter3d(x=[0.21700000000000008],
+                 y=[1.575],
+                 z=[0.0],
+                 mode='markers'))
 
     fig2.show()
 
-def calculate_box(obj_list_copy):
+def calculate_box_AABB(obj_list_copy):
 
     vertices_x = []
     vertices_y = []
@@ -98,6 +106,44 @@ def calculate_box(obj_list_copy):
     max_s = [max(vertices_x), max(vertices_y), max(vertices_z)]
 
     world_box = AABB(min_s, max_s)
+
+    return world_box
+
+
+def calculate_box_sphere(obj_list_copy):
+
+    vertices_x = []
+    vertices_y = []
+    vertices_z = []
+
+    for triangle in obj_list_copy:
+        #Triangle vertex 1
+        vertices_x.append(triangle.vertices[0][0])
+        vertices_y.append(triangle.vertices[0][1])
+        vertices_z.append(triangle.vertices[0][2])
+        #Triangle vertex 2
+        vertices_x.append(triangle.vertices[1][0])
+        vertices_y.append(triangle.vertices[1][1])
+        vertices_z.append(triangle.vertices[1][2])
+        #Triangle vertex 3
+        vertices_x.append(triangle.vertices[2][0])
+        vertices_y.append(triangle.vertices[2][1])
+        vertices_z.append(triangle.vertices[2][2])
+
+    sphere_centre = [(min(vertices_x) + max(vertices_x)) / 2,
+                     (min(vertices_y) + max(vertices_y)) / 2,
+                     (min(vertices_z) + max(vertices_z)) / 2]
+
+    print(f"sphere_centre: {sphere_centre}")
+
+    radius = math.dist(sphere_centre, [max(vertices_x), max(vertices_y), max(vertices_z)])
+
+    print(f"radius: {radius}")
+
+
+    #plot_sphere_centre(sphere_centre, radius)
+
+    world_box = sphere(sphere_centre, radius)
 
     return world_box
 
@@ -144,6 +190,31 @@ def plot_centroid(triangles, centroids):
                  mode='markers'))
     fig.show()
 
+def plot_sphere_centre(sphere_centre, radius):
+
+    fig = go.Figure()
+    
+    resolution=101
+    x = sphere_centre[0]
+    y = sphere_centre[1]
+    z = sphere_centre[2]
+
+    u, v = np.mgrid[0:2*np.pi:resolution*2j, 0:np.pi:resolution*1j]
+    X = radius * np.cos(u)*np.sin(v) + x
+    Y = radius * np.sin(u)*np.sin(v) + y
+    Z = radius * np.cos(v) + z
+
+    data_plotly = go.Surface(x=X, y=Y, z=Z, opacity=0.5)
+
+    fig = go.Figure(data=data_plotly)
+
+    fig.add_trace(
+        go.Scatter3d(x = [x],
+                     y = [y],
+                     z = [z],
+                    mode='markers'))
+
+    fig.show()
 
 def plot_bbox(bbox, objects, node_number, depth):
 
@@ -257,3 +328,34 @@ def plot_layer(dict_depth):
         val += 1
 
     return 0
+
+def plot_layer_sphere(dict_depth):
+
+    val = 0
+    for depth in dict_depth.values():
+
+        fig = go.Figure()
+
+        for bbox in depth:
+            
+            print(f"bbox centre: {bbox.centre}, radius: {bbox.radius}")
+
+            resolution=101
+            x = bbox.centre[0]
+            y = bbox.centre[1]
+            z = bbox.centre[2]
+
+            u, v = np.mgrid[0:2*np.pi:resolution*2j, 0:np.pi:resolution*1j]
+            X = bbox.radius * np.cos(u)*np.sin(v) + x
+            Y = bbox.radius * np.sin(u)*np.sin(v) + y
+            Z = bbox.radius * np.cos(v) + z
+
+            data_plotly = go.Surface(x=X, y=Y, z=Z, opacity=0.5)
+
+            fig.add_trace(go.Surface(x=X, y=Y, z=Z, opacity=0.5))
+
+            print(f"layer: {val}")
+
+        fig.write_html(r"D:\OneDrive\Pulpit\Praca_Magisterska\layers\layer_{}".format(val))
+        ##fig.write_image(r"D:\OneDrive\Pulpit\Praca_Magisterska\layers\layer_{}.png".format(val))
+        val += 1

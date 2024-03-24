@@ -1,4 +1,4 @@
-from obj_functions import open_obj_file, calculate_box_AABB, build_triangles, find_centroids, plot_obj_file, plot_bbox, plot_layer
+from obj_functions import open_obj_file, calculate_box_AABB, build_triangles, find_centroids, plot_obj_file, plot_bbox, plot_layer, calculate_box_sphere, plot_layer_sphere
 from bvh import BVHNode
 from AABB import AABB
 from triangle import Triangle
@@ -46,13 +46,20 @@ def build(node_list):
     """First iteration of the recursion, creation of the root node"""
     
     print("build function")
+    bbox_type = "sphere"
 
     obj_list_copy = begin()
     
     root = BVHNode(obj_list_copy)
 
-    world_box = calculate_box_AABB(obj_list_copy)
-    print(f"Root node bbox, mins:{world_box.mins}, maxs:{world_box.maxs}")
+    world_box = None
+
+    if bbox_type == "AABB":
+        world_box = calculate_box_AABB(obj_list_copy)
+    elif bbox_type == "OBB":
+        print("To be done.")
+    elif bbox_type == "sphere":
+        world_box = calculate_box_sphere(obj_list_copy)
 
     root.set_bbox(world_box)
     node_list.append(root)
@@ -66,6 +73,7 @@ def build_recursive(node, depth, node_list):
     print("--------------------------------------------------------------------------------------")
     print(f"build recursive: {depth}")
 
+    bbox_type = "sphere"
     vertices_x = []
     vertices_y = []
     vertices_z = []
@@ -80,7 +88,7 @@ def build_recursive(node, depth, node_list):
     print(f"right_index: {right_index}")
     print(f"right_index - left_index: {right_index - left_index}")
 
-    if right_index - left_index <= 64:
+    if right_index - left_index <= 4:
         node.make_leaf()
         print("Make leaf!")
         return node_list
@@ -210,8 +218,13 @@ def build_recursive(node, depth, node_list):
         
         print(f"len(obj_list_copy[left_index:split_index]) : {len(obj_list_node_sorted[left_index:split_index])}")
         print(f"len(obj_list_copy[split_index:right_index]) : {len(obj_list_node_sorted[split_index:right_index])}")
-        left_index_box = calculate_box(obj_list_node_sorted[left_index:split_index])
-        right_index_box = calculate_box(obj_list_node_sorted[split_index:right_index])
+        if bbox_type == "AABB":
+            left_index_box = calculate_box_AABB(obj_list_node_sorted[left_index:split_index])
+            right_index_box = calculate_box_AABB(obj_list_node_sorted[split_index:right_index])
+        elif bbox_type == "sphere":
+            left_index_box = calculate_box_sphere(obj_list_node_sorted[left_index:split_index])
+            right_index_box = calculate_box_sphere(obj_list_node_sorted[split_index:right_index])
+        
         # Initiate current node as an interior node with leftNode and rightNode as children
         node.left = BVHNode(obj_list_node_sorted[left_index:split_index])
         node.right = BVHNode(obj_list_node_sorted[split_index:right_index])
@@ -230,35 +243,15 @@ def main():
     node_list = build(node_list)
     print(f"Len: {len(node_list)}")
 
-    # i = 0
-    # for node in node_list:
-    #     plot_bbox(node.get_bbox(), node.get_triangles(), i, node.get_depth())
-    #     i += 1
-
     node_list_depth = defaultdict(list)
     for node in node_list:
         node_list_depth[node.get_depth()].append(node.get_bbox())
     
-    # for i in node_list_depth:
-    #     print(f"depth {i}: {node_list_depth[i]}, {node_list_depth[i]}")
-
-    first_two = dict(list(node_list_depth.items())[:2])
-
-    print("=========================================================")
-
-    # print(f"first_two: {first_two}")
-    # layer_1_A = node_list_depth[1][0]
-    # layer_1_B = node_list_depth[1][1]
-    # print(f"layer_1_A_mins: {layer_1_A.mins}")
-    # print(f"layer_1_A_maxs: {layer_1_A.maxs}")
-    # print(f"layer_1_B_mins: {layer_1_B.mins}")
-    # print(f"layer_1_B_maxs: {layer_1_B.maxs}")
-
     for layer in node_list_depth:
         print(f"Layer: {layer}, length: {len(node_list_depth[layer])}")
 
-    plot_layer(node_list_depth)
-        
+    #plot_layer(node_list_depth)
+    plot_layer_sphere(node_list_depth)
 
 if __name__ == "__main__":
     sys.stdout = open(r"D:\OneDrive\Pulpit\Praca_Magisterska\log.txt", 'w')
