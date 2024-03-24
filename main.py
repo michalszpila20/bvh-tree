@@ -210,8 +210,8 @@ def build_recursive(node, depth, node_list):
         
         print(f"len(obj_list_copy[left_index:split_index]) : {len(obj_list_node_sorted[left_index:split_index])}")
         print(f"len(obj_list_copy[split_index:right_index]) : {len(obj_list_node_sorted[split_index:right_index])}")
-        left_index_box = calculate_box(obj_list_node_sorted[left_index:split_index])
-        right_index_box = calculate_box(obj_list_node_sorted[split_index:right_index])
+        left_index_box = calculate_box_AABB(obj_list_node_sorted[left_index:split_index])
+        right_index_box = calculate_box_AABB(obj_list_node_sorted[split_index:right_index])
         # Initiate current node as an interior node with leftNode and rightNode as children
         node.left = BVHNode(obj_list_node_sorted[left_index:split_index])
         node.right = BVHNode(obj_list_node_sorted[split_index:right_index])
