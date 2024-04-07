@@ -324,7 +324,6 @@ def plot_layer(dict_depth):
             print(f"layer: {val}")
 
         fig.write_html(r"D:\OneDrive\Pulpit\Praca_Magisterska\layers\layer_{}".format(val))
-        ##fig.write_image(r"D:\OneDrive\Pulpit\Praca_Magisterska\layers\layer_{}.png".format(val))
         val += 1
 
     return 0
