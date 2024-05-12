@@ -1,10 +1,11 @@
-from obj_functions import open_obj_file, calculate_box_AABB, build_triangles, find_centroids, plot_obj_file, plot_bbox, plot_layer, calculate_box_sphere, plot_layer_sphere
+from obj_functions import plot_bbox,plot_BVH, open_obj_file, calculate_box_AABB, build_triangles, find_centroids, plot_obj_file, calculate_box_sphere, plot_layer_sphere, calculate_box_OBB, plot_layer_OBB, plot_layer
 from bvh import BVHNode
 from AABB import AABB
 from triangle import Triangle
 import statistics
 import sys
 from collections import defaultdict
+import time
 
 #vertices coordiantes
 verticesX = []
@@ -46,7 +47,8 @@ def build(node_list):
     """First iteration of the recursion, creation of the root node"""
     
     print("build function")
-    bbox_type = "sphere"
+
+    bbox_type = "AABB"
 
     obj_list_copy = begin()
     
@@ -56,8 +58,8 @@ def build(node_list):
 
     if bbox_type == "AABB":
         world_box = calculate_box_AABB(obj_list_copy)
-    elif bbox_type == "OBB":
-        print("To be done.")
+    elif bbox_type == "OBB":  
+        world_box = calculate_box_OBB(obj_list_copy)
     elif bbox_type == "sphere":
         world_box = calculate_box_sphere(obj_list_copy)
 
@@ -73,7 +75,7 @@ def build_recursive(node, depth, node_list):
     print("--------------------------------------------------------------------------------------")
     print(f"build recursive: {depth}")
 
-    bbox_type = "sphere"
+    bbox_type = "AABB"
     vertices_x = []
     vertices_y = []
     vertices_z = []
@@ -169,7 +171,7 @@ def build_recursive(node, depth, node_list):
         print(f"right_index_pop: {right_index_pop}")
 
         axis_median = 0
-        if left_index_pop <= 16 or right_index_pop <= 16:
+        if left_index_pop <= 1 or right_index_pop <= 1:
             median_split = True
             axis_median = statistics.median(centres)
             print(f"axis_median: {axis_median}")
@@ -187,7 +189,7 @@ def build_recursive(node, depth, node_list):
             elif max_len_axis == "z":
                 obj_list_node_sorted = sorted(obj_list_node, key=lambda triangle: triangle.centroid[2])
 
-        print(f"obj_list_node_sorted: {obj_list_node_sorted}")
+        #print(f"obj_list_node_sorted: {obj_list_node_sorted}")
 
         if median_split == True:
             split_index_min = axis_median
@@ -224,6 +226,9 @@ def build_recursive(node, depth, node_list):
         elif bbox_type == "sphere":
             left_index_box = calculate_box_sphere(obj_list_node_sorted[left_index:split_index])
             right_index_box = calculate_box_sphere(obj_list_node_sorted[split_index:right_index])
+        elif bbox_type == "OBB":
+            left_index_box = calculate_box_OBB(obj_list_node_sorted[left_index:split_index])
+            right_index_box = calculate_box_OBB(obj_list_node_sorted[split_index:right_index])
         
         # Initiate current node as an interior node with leftNode and rightNode as children
         node.left = BVHNode(obj_list_node_sorted[left_index:split_index])
@@ -244,14 +249,27 @@ def main():
     print(f"Len: {len(node_list)}")
 
     node_list_depth = defaultdict(list)
+    node_min_max_lenght_leaf = []
+
+    node_number = 0
     for node in node_list:
+        # plot_bbox(node.get_bbox(), node.get_triangles(), node_number, node.get_depth())
         node_list_depth[node.get_depth()].append(node.get_bbox())
+
+        if node.is_leaf():
+            node_min_max_lenght_leaf.append(node.get_depth())
+
+        node_number += 1
     
     for layer in node_list_depth:
         print(f"Layer: {layer}, length: {len(node_list_depth[layer])}")
 
-    #plot_layer(node_list_depth)
-    plot_layer_sphere(node_list_depth)
+    print(f"Min lenght of tree: {min(node_min_max_lenght_leaf)}, Max lenght of tree: {max(node_min_max_lenght_leaf)}")
+
+    plot_layer(node_list_depth)
+    plot_BVH(node_list)
+    #plot_layer_sphere(node_list_depth)
+    #plot_layer_OBB(node_list_depth)
 
 if __name__ == "__main__":
     sys.stdout = open(r"D:\OneDrive\Pulpit\Praca_Magisterska\log.txt", 'w')

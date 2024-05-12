@@ -25,3 +25,6 @@ class BVHNode:
     
     def get_depth(self):
         return self.depth
+    
+    def is_leaf(self):
+        return self.leaf
