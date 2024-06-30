@@ -1,14 +1,10 @@
-from obj_functions import plot_BVH_from_obj, save_obj, plot_bbox,plot_BVH, open_obj_file, calculate_box_AABB, build_triangles, find_centroids, plot_obj_file, calculate_box_sphere, plot_layer_sphere, calculate_box_OBB, plot_layer_OBB, plot_layer
-from collision_detection import ray_intersection, ray_intersection_sphere
+from obj_functions import open_obj_file, calculate_box_AABB, build_triangles, find_centroids, calculate_box_sphere, calculate_box_OBB
 from bvh import BVHNode
-from AABB import AABB
 from triangle import Triangle
 import statistics
 import sys
-from collections import defaultdict
-import time
-import plotly.graph_objects as go
-import numpy as np
+from ray_intersection import ray_intersect
+
 #vertices coordiantes
 verticesX = []
 verticesY = []
@@ -248,44 +244,11 @@ def build_recursive(node, depth, node_list):
 def main():
     node_list = []
     node_list = build(node_list)
-    # print(f"Len: {len(node_list)}")
-
-    node_list_depth = defaultdict(list)
-    # node_min_max_lenght_leaf = []
-
-    node_number = 0
-    for node in node_list:
-        # plot_bbox(node.get_bbox(), node.get_triangles(), node_number, node.get_depth())
-        node_list_depth[node.get_depth()].append(node.get_bbox())
-
-    #     if node.is_leaf():
-    #         node_min_max_lenght_leaf.append(node.get_depth())
-
-    #     node_number += 1
     
-    print(f"Root node corners: {node_list[0].get_bbox().corners}")
-    print(f"Root node centre: {node_list[0].get_bbox().centre}")
-    
-
-    # for layer in node_list_depth:
-    #     print(f"Layer: {layer}, length: {len(node_list_depth[layer])}")
-
-    # print(f"Min lenght of tree: {min(node_min_max_lenght_leaf)}, Max lenght of tree: {max(node_min_max_lenght_leaf)}")
-
-    # plot_layer(node_list_depth)
-    # plot_BVH(node_list)
-    #save_obj(node_list_depth)
-    #plot_BVH_from_obj(r"D:\OneDrive\Pulpit\Praca_Magisterska\obj\all.obj")
-    #plot_layer_sphere(node_list_depth)
-    #plot_layer_OBB(node_list_depth)
-
-    print("--------------------------------------------------")
-
     ray_origin = [1.223, -2.78, 10]
     ray_dest = [-3, 5, -8]
 
-    # ray_intersection_AABB(ray_origin, ray_dest, node_list)
-    #ray_intersection_sphere(ray_origin, ray_dest, node_list)
+    ray_intersect(ray_origin, ray_dest, node_list)
 
 
 if __name__ == "__main__":

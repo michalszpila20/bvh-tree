@@ -484,7 +484,7 @@ def calculate_box_OBB(obj_list_copy):
     print(f"corners: {corners}")
     center = np.dot(center, tvect)
 
-    world_box = OBB(corners, center)
+    world_box = OBB(corners, center, diff, vect)
 
     return world_box
 
