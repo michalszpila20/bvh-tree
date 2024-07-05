@@ -162,9 +162,14 @@ def find_centroids(verticesI, triangles):
     return centroids
 
 def plot_centroid(triangles, centroids):
+
     x = [triangles[50][0][0], triangles[50][1][0], triangles[50][2][0]]
     y = [triangles[50][0][1], triangles[50][1][1], triangles[50][2][1]]
     z = [triangles[50][0][2], triangles[50][1][2], triangles[50][2][2]]
+
+    print(f"x: {x}")
+    print(f"y: {y}")
+    print(f"z: {z}")
 
     i = np.array([0])
     j = np.array([1])

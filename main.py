@@ -3,7 +3,7 @@ from bvh import BVHNode
 from triangle import Triangle
 import statistics
 import sys
-from ray_intersection import ray_intersect
+from ray_intersection.ray_intersection import ray_intersect
 
 #vertices coordiantes
 verticesX = []
@@ -248,7 +248,10 @@ def main():
     ray_origin = [1.223, -2.78, 10]
     ray_dest = [-3, 5, -8]
 
-    ray_intersect(ray_origin, ray_dest, node_list)
+    if ray_intersect(ray_origin, ray_dest, node_list):
+        print("The end with intersection")
+    else:
+        print("The end without intersection")
 
 
 if __name__ == "__main__":
