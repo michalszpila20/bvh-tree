@@ -46,10 +46,12 @@ def build(node_list):
     
     print("build function")
 
-    bbox_type = "OBB"
+    bbox_type = "AABB"
 
     obj_list_copy = begin()
     
+    print(f"obj_list_copy: {obj_list_copy}")
+
     root = BVHNode(obj_list_copy)
 
     world_box = None
@@ -73,7 +75,7 @@ def build_recursive(node, depth, node_list):
     print("--------------------------------------------------------------------------------------")
     print(f"build recursive: {depth}")
 
-    bbox_type = "OBB"
+    bbox_type = "AABB"
     vertices_x = []
     vertices_y = []
     vertices_z = []
