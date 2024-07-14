@@ -10,15 +10,10 @@ def ray_intersect(ray_origin, ray_dest, node_list):
     is_intersection = False
 
     if bvh_type == "AABB":
-        #is_intersection = intersection_AABB_boolean(ray_origin, ray_dest, node_list)
         is_intersection, ray_dest_new, closest_hit = intersection_AABB_closest(ray_origin, ray_dest, node_list)
     elif bvh_type == "sphere":
         is_intersection = intersection_sphere(ray_origin, ray_dest, node_list)
     elif bvh_type == "OBB":
         is_intersection = intersection_OBB_boolean(ray_origin, ray_dest, node_list)
-        # is_intersection, ray_dest_new, closest_hit= intersection_OBB_closest(ray_origin, ray_dest, node_list)
-        # print(f"is_intersection:{is_intersection}")
-        # print(f"ray_dest_new:{ray_dest_new}")
-        # print(f"closest_hit:{closest_hit}")
     
     return is_intersection

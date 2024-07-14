@@ -5,6 +5,7 @@ from AABB import AABB
 from OBB import OBB
 import math
 from sphere import sphere 
+import logging
 
 def open_obj_file(filename):
 
@@ -101,7 +102,7 @@ def adjust_sphere(sphere, point):
     dist2 = np.dot(d, d)
 
     if dist2 > sphere.radius * sphere.radius:
-        print("Inside!")
+        logging.debug("Inside!")
         dist = np.sqrt(dist2)
         new_radius = (sphere.radius + dist) * 0.5
         k = (new_radius - sphere.radius) / dist
@@ -112,7 +113,7 @@ def adjust_sphere(sphere, point):
 
 def calculate_box_sphere_ritter(obj_list_copy):
 
-    print("Ritter method!")
+    logging.debug("Ritter method!")
 
     vertices_x = []
     vertices_y = []
@@ -143,7 +144,7 @@ def calculate_box_sphere_ritter(obj_list_copy):
     min_z = 0
     max_z = 0
 
-    print(f"len(points): {len(points)}")
+    logging.debug(f"len(points): {len(points)}")
 
     for i in range(1, len(points)):
         if points[i][0] < points[min_x][0]: min_x = i
@@ -153,14 +154,14 @@ def calculate_box_sphere_ritter(obj_list_copy):
         if points[i][2] < points[min_z][2]: min_z = i
         if points[i][2] > points[max_z][2]: max_z = i
 
-    print(f"min_x :{min_x}")
-    print(f"max_x :{max_x}")
-    print(f"min_y :{min_y}")
-    print(f"max_y :{max_y}")
-    print(f"min_z :{min_z}")
-    print(f"max_z :{max_z}")
+    logging.debug(f"min_x :{min_x}")
+    logging.debug(f"max_x :{max_x}")
+    logging.debug(f"min_y :{min_y}")
+    logging.debug(f"max_y :{max_y}")
+    logging.debug(f"min_z :{min_z}")
+    logging.debug(f"max_z :{max_z}")
 
-    print(f"points[max_x]: {points[max_x]}, points[min_x]: {points[min_x]}")
+    logging.debug(f"points[max_x]: {points[max_x]}, points[min_x]: {points[min_x]}")
 
     point_x1 = np.array([points[min_x][0], points[min_x][1], points[min_x][2]])
     point_x2 = np.array([points[max_x][0], points[max_x][1], points[max_x][2]])
@@ -174,9 +175,9 @@ def calculate_box_sphere_ritter(obj_list_copy):
     dist2x = np.linalg.norm(point_x1 - point_x2)
     dist2y = np.linalg.norm(point_y1 - point_y2)
     dist2z = np.linalg.norm(point_z1 - point_z2)
-    print(f"dist2x: {dist2x}")
-    print(f"dist2y: {dist2y}")
-    print(f"dist2z: {dist2z}")
+    logging.debug(f"dist2x: {dist2x}")
+    logging.debug(f"dist2y: {dist2y}")
+    logging.debug(f"dist2z: {dist2z}")
 
     min = min_x
     max = max_x
@@ -189,19 +190,19 @@ def calculate_box_sphere_ritter(obj_list_copy):
         max = max_z
         min = min_z
 
-    print(f"min: {min}")
-    print(f"max: {max}")
+    logging.debug(f"min: {min}")
+    logging.debug(f"max: {max}")
 
     centre = (np.array([points[min][0], points[min][1], points[min][2]]) + np.array([points[max][0], points[max][1], points[max][2]])) * 0.5
     radius = np.sqrt(np.dot(points[max] - centre, points[max] - centre))
-    print(f"centre: {centre}, radius: {radius}") 
+    logging.debug(f"centre: {centre}, radius: {radius}") 
 
     base_sphere = sphere(centre, radius)
 
     for i in range(1, len(points)):
         base_sphere = adjust_sphere(base_sphere, points[i])
 
-    print(f"base_sphere: {base_sphere.centre} , {base_sphere.radius}")
+    logging.debug(f"base_sphere: {base_sphere.centre} , {base_sphere.radius}")
 
 def calculate_box_sphere(obj_list_copy):
 
@@ -231,7 +232,7 @@ def calculate_box_sphere(obj_list_copy):
                      (min(vertices_y) + max(vertices_y)) / 2,
                      (min(vertices_z) + max(vertices_z)) / 2]
 
-    print(f"sphere_centre: {sphere_centre}")
+    logging.debug(f"sphere_centre: {sphere_centre}")
 
     radius = 0
 
@@ -240,7 +241,7 @@ def calculate_box_sphere(obj_list_copy):
         if distance > radius:
             radius = distance
 
-    print(f"radius: {radius}")
+    logging.debug(f"radius: {radius}")
 
     world_box = sphere(sphere_centre, radius)
 
@@ -277,9 +278,9 @@ def plot_centroid(triangles, centroids):
     y = [triangles[50][0][1], triangles[50][1][1], triangles[50][2][1]]
     z = [triangles[50][0][2], triangles[50][1][2], triangles[50][2][2]]
 
-    print(f"x: {x}")
-    print(f"y: {y}")
-    print(f"z: {z}")
+    logging.debug(f"x: {x}")
+    logging.debug(f"y: {y}")
+    logging.debug(f"z: {z}")
 
     i = np.array([0])
     j = np.array([1])
@@ -399,7 +400,7 @@ def plot_layer(dict_depth):
             max_Y = bbox.maxs[1]
             max_Z = bbox.maxs[2]
 
-            print(f"Plot layer in {depth}, min_x: {min_x}, min_Y: {min_Y}, min_Z: {min_Z}, max_x: {max_x}, max_Y: {max_Y}, max_Z: {max_Z}"),
+            logging.debug(f"Plot layer in {depth}, min_x: {min_x}, min_Y: {min_Y}, min_Z: {min_Z}, max_x: {max_x}, max_Y: {max_Y}, max_Z: {max_Z}"),
 
             fig.add_trace(go.Mesh3d(
                 
@@ -557,13 +558,13 @@ def calculate_box_OBB(obj_list_copy):
         points_3D.append(tuple([triangle.vertices[0][0], triangle.vertices[0][1], triangle.vertices[0][2]]))
 
     ca = np.cov(points_3D, y=None, rowvar=0, bias=1)
-    print(f"ca: {ca}")
+    logging.debug(f"ca: {ca}")
 
     v, vect = np.linalg.eig(ca)
-    print(f"v: {v}")
-    print(f"vect: {vect}")
+    logging.debug(f"v: {v}")
+    logging.debug(f"vect: {vect}")
     tvect = np.transpose(vect)
-    print(f"tvect: {tvect}")
+    logging.debug(f"tvect: {tvect}")
 
     # use the inverse of the eigenvectors as a rotation matrix and
     # rotate the points so they align with the x and y axes
@@ -573,14 +574,14 @@ def calculate_box_OBB(obj_list_copy):
     mina = np.min(ar, axis=0)
     maxa = np.max(ar, axis=0)
 
-    print(f"mina: {mina}")
-    print(f"maxa: {maxa}")
+    logging.debug(f"mina: {mina}")
+    logging.debug(f"maxa: {maxa}")
     diff = (maxa - mina) * 0.5
-    print(f"diff: {diff}")
+    logging.debug(f"diff: {diff}")
 
     # the center is just half way between the min and max xy
     center = mina + diff
-    print(f"center: {center}")
+    logging.debug(f"center: {center}")
 
     corners = np.array([center + [-diff[0], -diff[1], -diff[2]],
                         center + [diff[0], diff[1], diff[2]],
@@ -594,9 +595,9 @@ def calculate_box_OBB(obj_list_copy):
     # use the eigenvectors as a rotation matrix and
     # rotate the corners and the center back
     corners = np.dot(corners, tvect)
-    print(f"corner 1 x:{corners[0][0]}, y:{corners[0][1]}, z:{corners[0][2]}")
-    print(f"corner 2 x:{corners[1][0]}, y:{corners[1][1]}, z:{corners[1][2]}")
-    print(f"corners: {corners}")
+    logging.debug(f"corner 1 x:{corners[0][0]}, y:{corners[0][1]}, z:{corners[0][2]}")
+    logging.debug(f"corner 2 x:{corners[1][0]}, y:{corners[1][1]}, z:{corners[1][2]}")
+    logging.debug(f"corners: {corners}")
     center = np.dot(center, tvect)
 
     world_box = OBB(corners, center, diff, vect)

@@ -1,38 +1,39 @@
 import math
 import numpy as np
 from ray_intersection.ray_intersection_utils import intersect_line_triangle_boolean, intersect_line_triangle_closest
+import logging
 
 def ray_intersection_OBB(ray_origin, ray_dest, obb_center, obb_half_extents, obb_rotation):
 
-    print(f"obb_center: {obb_center}")
-    print(f"obb_half_extents: {obb_half_extents}")
-    print(f"obb_rotation: {obb_rotation}")
+    logging.debug(f"obb_center: {obb_center}")
+    logging.debug(f"obb_half_extents: {obb_half_extents}")
+    logging.debug(f"obb_rotation: {obb_rotation}")
 
     magnitude = math.sqrt(pow(ray_dest[0] - ray_origin[0], 2) + pow(ray_dest[1] - ray_origin[1], 2) + pow(ray_dest[2] - ray_origin[2], 2))
     vector_x_len = ray_dest[0] - ray_origin[0]
     vector_y_len = ray_dest[1] - ray_origin[1]
     vector_z_len = ray_dest[2] - ray_origin[2]
 
-    print(f"magnitude: {magnitude}")
-    print(f"vector_x_len: {vector_x_len}")
-    print(f"vector_y_len: {vector_y_len}")
-    print(f"vector_z_len: {vector_z_len}")
+    logging.debug(f"magnitude: {magnitude}")
+    logging.debug(f"vector_x_len: {vector_x_len}")
+    logging.debug(f"vector_y_len: {vector_y_len}")
+    logging.debug(f"vector_z_len: {vector_z_len}")
 
     dir_ray_X = vector_x_len / magnitude
     dir_ray_Y = vector_y_len / magnitude
     dir_ray_Z = vector_z_len / magnitude
 
-    print(f"dir_ray_X: {dir_ray_X}")
-    print(f"dir_ray_Y: {dir_ray_Y}")
-    print(f"dir_ray_Z: {dir_ray_Z}")
+    logging.debug(f"dir_ray_X: {dir_ray_X}")
+    logging.debug(f"dir_ray_Y: {dir_ray_Y}")
+    logging.debug(f"dir_ray_Z: {dir_ray_Z}")
 
     ray_dir = np.array([dir_ray_X, dir_ray_Y, dir_ray_Z])
 
     local_ray_origin = np.dot(obb_rotation.T, ray_origin - obb_center)
     local_ray_dir = np.dot(obb_rotation.T, ray_dir)
 
-    print(f"local_ray_origin: {local_ray_origin}")
-    print(f"local_ray_dir: {local_ray_dir}")
+    logging.debug(f"local_ray_origin: {local_ray_origin}")
+    logging.debug(f"local_ray_dir: {local_ray_dir}")
 
     t_X_min = (-obb_half_extents[0] - local_ray_origin[0]) / local_ray_dir[0]
     t_Y_min = (-obb_half_extents[1] - local_ray_origin[1]) / local_ray_dir[1]
@@ -54,8 +55,8 @@ def ray_intersection_OBB(ray_origin, ray_dest, obb_center, obb_half_extents, obb
     t_near = max(t_X_near, t_Y_near, t_Z_near)
     t_far = min(t_X_far, t_Y_far, t_Z_far)
 
-    print(f"t_near: {t_near}")
-    print(f"t_far: {t_far}")
+    logging.debug(f"t_near: {t_near}")
+    logging.debug(f"t_far: {t_far}")
 
     if t_near < t_far:
         print("There is intersection!")
@@ -77,44 +78,44 @@ def intersection_OBB_boolean(ray_origin, ray_dest, node_list):
     print("--------------------------------------------")
 
     if not ray_intersection_OBB(ray_origin, ray_dest, obb_center, obb_half_extents, obb_rotation):
-        print("No intersection in root node, returing False.")
+        logging.debug("No intersection in root node, returing False.")
         return False
     while 1:
         if not current_node.is_leaf():
 
-            print("Current node is not leaf, checking children of this node.")
+            logging.debug("Current node is not leaf, checking children of this node.")
             left_child_intersect = ray_intersection_OBB(ray_origin, ray_dest, current_node.left.get_bbox().centre, current_node.left.get_bbox().half_extents, current_node.left.get_bbox().rotation)
             right_child_intersect = ray_intersection_OBB(ray_origin, ray_dest, current_node.right.get_bbox().centre, current_node.right.get_bbox().half_extents, current_node.right.get_bbox().rotation)
-            print(f"Left child intersect? {left_child_intersect}")
-            print(f"Right child intersect? {right_child_intersect}")
+            logging.debug(f"Left child intersect? {left_child_intersect}")
+            logging.debug(f"Right child intersect? {right_child_intersect}")
             if left_child_intersect and right_child_intersect:
-                print("Both intersect.")
+                logging.debug("Both intersect.")
                 node_stack.append(current_node.right)
-                print(f"Node stack is: {node_stack}")
+                logging.debug(f"Node stack is: {node_stack}")
                 current_node = current_node.left
-                print(f"Curent node is: {current_node}, when both node were intersected.")
+                logging.debug(f"Curent node is: {current_node}, when both node were intersected.")
                 continue
             elif left_child_intersect and not right_child_intersect:
                 current_node = current_node.left
-                print(f"Curent node is: {current_node}, when only one node was intersected (left).")
+                logging.debug(f"Curent node is: {current_node}, when only one node was intersected (left).")
                 continue
             elif not left_child_intersect and right_child_intersect:
                 current_node = current_node.right
-                print(f"Curent node is: {current_node}, when only one node was intersected (right).")
+                logging.debug(f"Curent node is: {current_node}, when only one node was intersected (right).")
                 continue
             else:
-                print("Both nodes were not hit, do nothing!")
+                logging.debug("Both nodes were not hit, do nothing!")
         else:
-            print("Final intersection!!!")
+            logging.debug("Final intersection!!!")
             is_hit = intersect_line_triangle_boolean(current_node, ray_origin, ray_dest)
             
-            print(f"is_hit after final intersection: {is_hit}")
+            logging.debug(f"is_hit after final intersection: {is_hit}")
 
             if is_hit == True:
                 return True
 
         current_node = node_stack.pop(0)
-        print(f"current_node after no hit: {current_node}")
+        logging.debug(f"current_node after no hit: {current_node}")
 
         if len(node_stack) == 0:
             return False
@@ -128,72 +129,72 @@ def intersection_OBB_closest(ray_origin, ray_dest, node_list):
     obb_half_extents = current_node[0].get_bbox().half_extents
     obb_rotation = current_node[0].get_bbox().rotation
 
-    print("--------------------------------------------")
+    logging.debug("--------------------------------------------")
 
     is_hit = False
     ray_dest_new = ray_dest 
     closest_hit = None
 
     if not ray_intersection_OBB(ray_origin, ray_dest, obb_center, obb_half_extents, obb_rotation):
-        print("No intersection in root node, returing False.")
+        logging.debug("No intersection in root node, returing False.")
         return False
     while 1:
         if not current_node[0].is_leaf():
-            print("Current node is not leaf, checking children of this node.")
+            logging.debug("Current node is not leaf, checking children of this node.")
             left_child_intersect, t_near_left = ray_intersection_OBB(ray_origin, ray_dest, current_node[0].left.get_bbox().centre, current_node[0].left.get_bbox().half_extents, current_node[0].left.get_bbox().rotation)
             right_child_intersect, t_near_right = ray_intersection_OBB(ray_origin, ray_dest, current_node[0].right.get_bbox().centre, current_node[0].right.get_bbox().half_extents, current_node[0].right.get_bbox().rotation)
-            print(f"Left child intersect? {left_child_intersect}")
-            print(f"Right child intersect? {right_child_intersect}")
+            logging.debug(f"Left child intersect? {left_child_intersect}")
+            logging.debug(f"Right child intersect? {right_child_intersect}")
             if left_child_intersect and right_child_intersect:
-                print("Both intersect.")
+                logging.debug("Both intersect.")
 
                 if t_near_left < t_near_right:
                     node_stack.append([current_node[0].right, t_near_right])
                     current_node[0] = current_node[0].left
-                    print("Left node is closer, traverse left node, right on stack.")
+                    logging.debug("Left node is closer, traverse left node, right on stack.")
                 else:
                     node_stack.append([current_node[0].left, t_near_left])
                     current_node[0] = current_node[0].right
-                    print("Right node is closer, traverse right node, left on stack.")
+                    logging.debug("Right node is closer, traverse right node, left on stack.")
                 
-                print(f"Node stack is: {node_stack}")
-                print(f"Curent node is: {current_node}, when both node were intersected.")
+                logging.debug(f"Node stack is: {node_stack}")
+                logging.debug(f"Curent node is: {current_node}, when both node were intersected.")
                 continue
             elif left_child_intersect and not right_child_intersect:
                 current_node[0] = current_node[0].left
                 current_node[1] = t_near_left
-                print(f"Curent node is: {current_node}, when only one node was intersected (left).")
+                logging.debug(f"Curent node is: {current_node}, when only one node was intersected (left).")
                 continue
             elif not left_child_intersect and right_child_intersect:
                 current_node[0] = current_node[0].right
                 current_node[1] = t_near_right
-                print(f"Curent node is: {current_node}, when only one node was intersected (right).")
+                logging.debug(f"Curent node is: {current_node}, when only one node was intersected (right).")
                 continue
             else:
-                print("Both nodes were not hit, do nothing!")
+                logging.debug("Both nodes were not hit, do nothing!")
         else:
-            print("Final intersection!!!")
+            logging.debug("Final intersection!!!")
             ray_dest_new, closest_hit = intersect_line_triangle_closest(current_node, ray_origin, ray_dest)
         
         while node_stack:
 
-            print(f"Ultimate node stack is: {node_stack}")
+            logging.debug(f"Ultimate node stack is: {node_stack}")
 
             node = node_stack.pop(0)
 
-            print(f"node is in popping: {node}")
-            print(f"node is in popping [0]: {node[0]}")
-            print(f"node is in popping [1]: {node[1]}")
-            print(f"math.dist(ray_origin, ray_dest_new): {math.dist(ray_origin, ray_dest_new)}")
+            logging.debug(f"node is in popping: {node}")
+            logging.debug(f"node is in popping [0]: {node[0]}")
+            logging.debug(f"node is in popping [1]: {node[1]}")
+            logging.debug(f"math.dist(ray_origin, ray_dest_new): {math.dist(ray_origin, ray_dest_new)}")
 
             if node[1] < math.dist(ray_origin, ray_dest_new):
                 current_node = node
-                print(f"Current node: {current_node}, node[1] < ray_dest_new!")
+                logging.debug(f"Current node: {current_node}, node[1] < ray_dest_new!")
                 break
             elif node[1] > math.dist(ray_origin, ray_dest_new):
-                print(f"Current node: {current_node}, node[1] > ray_dest_new!!")
+                logging.debug(f"Current node: {current_node}, node[1] > ray_dest_new!!")
 
-            print(f"node stack after loop is: {node_stack}")
+            logging.debug(f"node stack after loop is: {node_stack}")
 
             if len(node_stack) == 0:
                 if closest_hit != None:
