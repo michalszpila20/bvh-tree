@@ -24,10 +24,10 @@ verticesK = []
 triangles = []
 centroids = []
 
-def begin():
+def begin(filename):
     """Open .obj file, build triangles and centroids"""
 
-    verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK = open_obj_file(r"D:\OneDrive\Pulpit\Praca_Magisterska\cow.obj.txt")
+    verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK = open_obj_file(f"{filename}.obj.txt")
     triangles = build_triangles(verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK)
     centroids = find_centroids(verticesI, triangles)
 
@@ -41,14 +41,12 @@ def begin():
         
     return obj_list
 
-def build(node_list):
+def build(node_list, bbox_type, filename):
     """First iteration of the recursion, creation of the root node"""
     
     logging.debug("build function")
 
-    bbox_type = "sphere"
-
-    obj_list_copy = begin()
+    obj_list_copy = begin(filename)
     
     logging.debug(f"obj_list_copy: {obj_list_copy}")
 
@@ -56,9 +54,9 @@ def build(node_list):
 
     world_box = None
 
-    if bbox_type == "AABB":
+    if bbox_type == "aabb":
         world_box = calculate_box_AABB(obj_list_copy)
-    elif bbox_type == "OBB":  
+    elif bbox_type == "obb":  
         world_box = calculate_box_OBB(obj_list_copy)
     elif bbox_type == "sphere":
         world_box = calculate_box_sphere(obj_list_copy)
@@ -66,16 +64,15 @@ def build(node_list):
     root.set_bbox(world_box)
     node_list.append(root)
 
-    build_recursive(root, 0, node_list)
+    build_recursive(root, 0, node_list, bbox_type)
     return node_list
 
-def build_recursive(node, depth, node_list):
+def build_recursive(node, depth, node_list, bbox_type):
     """Next iterations of the recursion, creation of the root node children"""
 
     logging.debug("--------------------------------------------------------------------------------------")
     logging.debug(f"build recursive: {depth}")
 
-    bbox_type = "sphere"
     vertices_x = []
     vertices_y = []
     vertices_z = []
@@ -215,13 +212,13 @@ def build_recursive(node, depth, node_list):
         
         logging.debug(f"len(obj_list_copy[left_index:split_index]) : {len(obj_list_node_sorted[left_index:split_index])}")
         logging.debug(f"len(obj_list_copy[split_index:right_index]) : {len(obj_list_node_sorted[split_index:right_index])}")
-        if bbox_type == "AABB":
+        if bbox_type == "aabb":
             left_index_box = calculate_box_AABB(obj_list_node_sorted[left_index:split_index])
             right_index_box = calculate_box_AABB(obj_list_node_sorted[split_index:right_index])
         elif bbox_type == "sphere":
             left_index_box = calculate_box_sphere(obj_list_node_sorted[left_index:split_index])
             right_index_box = calculate_box_sphere(obj_list_node_sorted[split_index:right_index])
-        elif bbox_type == "OBB":
+        elif bbox_type == "obb":
             left_index_box = calculate_box_OBB(obj_list_node_sorted[left_index:split_index])
             right_index_box = calculate_box_OBB(obj_list_node_sorted[split_index:right_index])
         
@@ -234,23 +231,31 @@ def build_recursive(node, depth, node_list):
 
         node_list.append(node.left)
         node_list.append(node.right)
-        build_recursive(node.left, depth + 1, node_list)
-        build_recursive(node.right, depth + 1, node_list)
+        build_recursive(node.left, depth + 1, node_list, bbox_type)
+        build_recursive(node.right, depth + 1, node_list, bbox_type)
         
 
 def main():
+
+    bbox_type = input("Box type: aabb / sphere / obb: ")
+    filename = input("Choose obj file: bear / boat / cow / pumpkin / rabbit / teapot: ")
+
     node_list = []
-    node_list = build(node_list)
+    node_list = build(node_list, bbox_type, filename)
     
     ray_origin = [1.223, -2.78, 10]
     ray_dest = [-3, 5, -8]
 
-    if ray_intersect(ray_origin, ray_dest, node_list):
-        logging.debug("The end with intersection")
-    else:
-        logging.debug("The end without intersection")
+    test_type = input("Ray intersect [a] or collision detection [b]?: ")    
 
-
+    if test_type == 'a':
+        if ray_intersect(ray_origin, ray_dest, node_list, bbox_type):
+            logging.debug("The end with intersection")
+        else:
+            logging.debug("The end without intersection")
+    elif test_type == 'b':
+        logging.debug("to do: collision test")
+    
 if __name__ == "__main__":
 
     logging.basicConfig(filename='app.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s', level=logging.DEBUG)

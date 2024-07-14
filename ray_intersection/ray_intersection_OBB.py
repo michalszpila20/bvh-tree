@@ -59,10 +59,10 @@ def ray_intersection_OBB(ray_origin, ray_dest, obb_center, obb_half_extents, obb
     logging.debug(f"t_far: {t_far}")
 
     if t_near < t_far:
-        print("There is intersection!")
+        logging.debug("There is intersection!")
         return True, t_near
     else:
-        print("There is no intersection!")
+        logging.debug("There is no intersection!")
         return False, t_near
 
 def intersection_OBB_boolean(ray_origin, ray_dest, node_list):
@@ -131,7 +131,6 @@ def intersection_OBB_closest(ray_origin, ray_dest, node_list):
 
     logging.debug("--------------------------------------------")
 
-    is_hit = False
     ray_dest_new = ray_dest 
     closest_hit = None
 
@@ -174,7 +173,7 @@ def intersection_OBB_closest(ray_origin, ray_dest, node_list):
                 logging.debug("Both nodes were not hit, do nothing!")
         else:
             logging.debug("Final intersection!!!")
-            ray_dest_new, closest_hit = intersect_line_triangle_closest(current_node, ray_origin, ray_dest)
+            ray_dest_new, closest_hit = intersect_line_triangle_closest(current_node, ray_origin, ray_dest, closest_hit)
         
         while node_stack:
 

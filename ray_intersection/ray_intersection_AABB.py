@@ -86,6 +86,10 @@ def intersection_AABB_boolean(ray_origin, ray_dest, node_list):
     current_node = node_list[0]
     node_stack = []
 
+    logging.debug(f"mins: {current_node}")
+    logging.debug(f"mins: {current_node.get_bbox()}")
+    logging.debug(f"mins: {current_node.get_bbox().mins}")
+
     mins = current_node.get_bbox().mins
     maxs = current_node.get_bbox().maxs
 
