@@ -1,4 +1,4 @@
-from obj_functions import open_obj_file, calculate_box_AABB, build_triangles, find_centroids, calculate_box_sphere, calculate_box_OBB
+from obj_functions import open_obj_file, calculate_box_AABB, build_triangles, find_centroids, calculate_box_sphere, calculate_box_OBB, calculate_box_sphere_ritter
 from bvh import BVHNode
 from triangle import Triangle
 import statistics
@@ -46,7 +46,7 @@ def build(node_list):
     
     print("build function")
 
-    bbox_type = "AABB"
+    bbox_type = "sphere"
 
     obj_list_copy = begin()
     
@@ -75,7 +75,7 @@ def build_recursive(node, depth, node_list):
     print("--------------------------------------------------------------------------------------")
     print(f"build recursive: {depth}")
 
-    bbox_type = "AABB"
+    bbox_type = "sphere"
     vertices_x = []
     vertices_y = []
     vertices_z = []

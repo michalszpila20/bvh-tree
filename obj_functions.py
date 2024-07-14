@@ -3,11 +3,8 @@ import plotly.graph_objects as go
 import numpy as np
 from AABB import AABB
 from OBB import OBB
-import plotly.express as px
-import plotly
 import math
 from sphere import sphere 
-import time
 
 def open_obj_file(filename):
 
@@ -98,26 +95,137 @@ def calculate_box_AABB(obj_list_copy):
 
     return world_box
 
+def adjust_sphere(sphere, point):
 
-def calculate_box_sphere(obj_list_copy):
+    d = point - sphere.centre
+    dist2 = np.dot(d, d)
+
+    if dist2 > sphere.radius * sphere.radius:
+        print("Inside!")
+        dist = np.sqrt(dist2)
+        new_radius = (sphere.radius + dist) * 0.5
+        k = (new_radius - sphere.radius) / dist
+        sphere.radius = new_radius
+        sphere.centre += d * k
+    
+    return sphere
+
+def calculate_box_sphere_ritter(obj_list_copy):
+
+    print("Ritter method!")
 
     vertices_x = []
     vertices_y = []
     vertices_z = []
+    points = []
 
     for triangle in obj_list_copy:
         #Triangle vertex 1
         vertices_x.append(triangle.vertices[0][0])
         vertices_y.append(triangle.vertices[0][1])
         vertices_z.append(triangle.vertices[0][2])
+        points.append([triangle.vertices[0][0], triangle.vertices[0][1], triangle.vertices[0][2]])
         #Triangle vertex 2
         vertices_x.append(triangle.vertices[1][0])
         vertices_y.append(triangle.vertices[1][1])
         vertices_z.append(triangle.vertices[1][2])
+        points.append([triangle.vertices[1][0], triangle.vertices[1][1], triangle.vertices[1][2]])
         #Triangle vertex 3
         vertices_x.append(triangle.vertices[2][0])
         vertices_y.append(triangle.vertices[2][1])
         vertices_z.append(triangle.vertices[2][2])
+        points.append([triangle.vertices[2][0], triangle.vertices[2][1], triangle.vertices[2][2]])
+
+    min_x = 0
+    max_x = 0
+    min_y = 0
+    max_y = 0
+    min_z = 0
+    max_z = 0
+
+    print(f"len(points): {len(points)}")
+
+    for i in range(1, len(points)):
+        if points[i][0] < points[min_x][0]: min_x = i
+        if points[i][0] > points[max_x][0]: max_x = i
+        if points[i][1] < points[min_y][1]: min_y = i
+        if points[i][1] > points[max_y][1]: max_y = i
+        if points[i][2] < points[min_z][2]: min_z = i
+        if points[i][2] > points[max_z][2]: max_z = i
+
+    print(f"min_x :{min_x}")
+    print(f"max_x :{max_x}")
+    print(f"min_y :{min_y}")
+    print(f"max_y :{max_y}")
+    print(f"min_z :{min_z}")
+    print(f"max_z :{max_z}")
+
+    print(f"points[max_x]: {points[max_x]}, points[min_x]: {points[min_x]}")
+
+    point_x1 = np.array([points[min_x][0], points[min_x][1], points[min_x][2]])
+    point_x2 = np.array([points[max_x][0], points[max_x][1], points[max_x][2]])
+
+    point_y1 = np.array([points[min_y][0], points[min_y][1], points[min_y][2]])
+    point_y2 = np.array([points[max_y][0], points[max_y][1], points[max_y][2]])
+
+    point_z1 = np.array([points[min_z][0], points[min_z][1], points[min_z][2]])
+    point_z2 = np.array([points[max_z][0], points[max_z][1], points[max_z][2]])
+    
+    dist2x = np.linalg.norm(point_x1 - point_x2)
+    dist2y = np.linalg.norm(point_y1 - point_y2)
+    dist2z = np.linalg.norm(point_z1 - point_z2)
+    print(f"dist2x: {dist2x}")
+    print(f"dist2y: {dist2y}")
+    print(f"dist2z: {dist2z}")
+
+    min = min_x
+    max = max_x
+
+    if dist2y > dist2x and dist2y > dist2y:
+        max = max_y
+        min = min_y
+    
+    if dist2z > dist2x and dist2z > dist2y:
+        max = max_z
+        min = min_z
+
+    print(f"min: {min}")
+    print(f"max: {max}")
+
+    centre = (np.array([points[min][0], points[min][1], points[min][2]]) + np.array([points[max][0], points[max][1], points[max][2]])) * 0.5
+    radius = np.sqrt(np.dot(points[max] - centre, points[max] - centre))
+    print(f"centre: {centre}, radius: {radius}") 
+
+    base_sphere = sphere(centre, radius)
+
+    for i in range(1, len(points)):
+        base_sphere = adjust_sphere(base_sphere, points[i])
+
+    print(f"base_sphere: {base_sphere.centre} , {base_sphere.radius}")
+
+def calculate_box_sphere(obj_list_copy):
+
+    vertices_x = []
+    vertices_y = []
+    vertices_z = []
+    points = []
+
+    for triangle in obj_list_copy:
+        #Triangle vertex 1
+        vertices_x.append(triangle.vertices[0][0])
+        vertices_y.append(triangle.vertices[0][1])
+        vertices_z.append(triangle.vertices[0][2])
+        points.append([triangle.vertices[0][0], triangle.vertices[0][1], triangle.vertices[0][2]])
+        #Triangle vertex 2
+        vertices_x.append(triangle.vertices[1][0])
+        vertices_y.append(triangle.vertices[1][1])
+        vertices_z.append(triangle.vertices[1][2])
+        points.append([triangle.vertices[1][0], triangle.vertices[1][1], triangle.vertices[1][2]])
+        #Triangle vertex 3
+        vertices_x.append(triangle.vertices[2][0])
+        vertices_y.append(triangle.vertices[2][1])
+        vertices_z.append(triangle.vertices[2][2])
+        points.append([triangle.vertices[2][0], triangle.vertices[2][1], triangle.vertices[2][2]])
 
     sphere_centre = [(min(vertices_x) + max(vertices_x)) / 2,
                      (min(vertices_y) + max(vertices_y)) / 2,
@@ -125,12 +233,14 @@ def calculate_box_sphere(obj_list_copy):
 
     print(f"sphere_centre: {sphere_centre}")
 
-    radius = math.dist(sphere_centre, [max(vertices_x), max(vertices_y), max(vertices_z)])
+    radius = 0
+
+    for point in points:
+        distance = math.dist(sphere_centre, [point[0], point[1], point[2]])
+        if distance > radius:
+            radius = distance
 
     print(f"radius: {radius}")
-
-
-    #plot_sphere_centre(sphere_centre, radius)
 
     world_box = sphere(sphere_centre, radius)
 

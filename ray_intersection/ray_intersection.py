@@ -6,7 +6,7 @@ from ray_intersection.ray_intersection_OBB import intersection_OBB_boolean, inte
 
 def ray_intersect(ray_origin, ray_dest, node_list):
 
-    bvh_type = "AABB"
+    bvh_type = "sphere"
     is_intersection = False
 
     if bvh_type == "AABB":
