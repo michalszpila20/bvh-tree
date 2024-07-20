@@ -6,6 +6,7 @@ from OBB import OBB
 import math
 from sphere import sphere 
 import logging
+from collections import defaultdict
 
 def open_obj_file(filename):
 
@@ -46,14 +47,14 @@ def open_obj_file(filename):
     return verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK
 
 def plot_obj_file(verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK):
-    fig2 = go.Figure(data=[
+    fig = go.Figure(data=[
     go.Mesh3d(
         x=verticesX,
         y=verticesY,
         z=verticesZ,
             
         color='blue',
-        opacity=0.2,
+        opacity=0.1,
             
         i=verticesI[0:-1],
         j=verticesJ[0:-1],
@@ -61,13 +62,43 @@ def plot_obj_file(verticesX, verticesY, verticesZ, verticesI, verticesJ, vertice
         )
     ])
 
-    fig2.add_trace(
-    go.Scatter3d(x=[0.21700000000000008],
-                 y=[1.575],
-                 z=[0.0],
-                 mode='markers'))
+    fig.show()
 
-    fig2.show()
+def plot_two_obj_file(filename_A, filename_B):
+    
+    verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK = open_obj_file(filename_A)
+    verticesX1, verticesY1, verticesZ1, verticesI1, verticesJ1, verticesK1 = open_obj_file(filename_B)
+
+    fig = go.Figure(data=[
+    go.Mesh3d(
+        x=verticesX,
+        y=verticesY,
+        z=verticesZ,
+            
+        color='blue',
+        opacity=0.1,
+            
+        i=verticesI[0:-1],
+        j=verticesJ[0:-1],
+        k=verticesK[0:-1]
+        )
+    ])
+
+    fig.add_trace(go.Mesh3d(
+        x=verticesX1,
+        y=verticesY1,
+        z=verticesZ1,
+            
+        color='red',
+        opacity=0.1,
+            
+        i=verticesI1[0:-1],
+        j=verticesJ1[0:-1],
+        k=verticesK1[0:-1]
+        )
+    )
+
+    fig.show()
 
 def calculate_box_AABB(obj_list_copy):
 
@@ -269,7 +300,6 @@ def find_centroids(verticesI, triangles):
         cen_Z = (triangles[i][0][2] + triangles[i][1][2] + triangles[i][2][2]) / 3
         centroids.append([cen_X, cen_Y, cen_Z])
 
-    plot_centroid(triangles, centroids)
     return centroids
 
 def plot_centroid(triangles, centroids):
@@ -379,112 +409,19 @@ def plot_bbox(bbox, objects, node_number, depth):
         opacity=0.50,
         flatshading = True))
 
-    fig1.write_html(r"D:\OneDrive\Pulpit\Praca_Magisterska\images\node{}_{}".format(node_number, depth))
-    ##fig1.write_image(r"D:\OneDrive\Pulpit\Praca_Magisterska\images\node{}_{}".format(node_number, depth), format='png')
+    fig1.show()
 
 
-def plot_layer(dict_depth):
+def save_obj(node_list, number):
 
-    val = 0
-    for depth in dict_depth.values():
-
-        fig = go.Figure()
-
-        for bbox in depth:
-
-            min_x = bbox.mins[0]
-            min_Y = bbox.mins[1]
-            min_Z = bbox.mins[2]
-
-            max_x = bbox.maxs[0]
-            max_Y = bbox.maxs[1]
-            max_Z = bbox.maxs[2]
-
-            logging.debug(f"Plot layer in {depth}, min_x: {min_x}, min_Y: {min_Y}, min_Z: {min_Z}, max_x: {max_x}, max_Y: {max_Y}, max_Z: {max_Z}"),
-
-            fig.add_trace(go.Mesh3d(
-                
-                x = [min_x, min_x, max_x, max_x, min_x, min_x, max_x, max_x],
-                y = [min_Y, max_Y, max_Y, min_Y, min_Y, max_Y, max_Y, min_Y],
-                z = [min_Z, min_Z, min_Z, min_Z, max_Z, max_Z, max_Z, max_Z],
-
-                i = [7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
-                j = [3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
-                k = [0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
-                color='gray',
-                opacity=1,
-                alphahull = 44,
-                flatshading = True,
-        
-                lighting=dict(ambient=0.1,
-                                diffuse=1,
-                                fresnel=4,
-                                specular=0.5,
-                                roughness=0.05),
-                lightposition=dict(x=100,
-                                y=200,
-                                z=100)
-                
-
-            ))
-
-        ##fig.write_html(r"D:\OneDrive\Pulpit\Praca_Magisterska\layers\cow\aabb\layer_{}".format(val))
-        fig.write_image(r"D:\OneDrive\Pulpit\Praca_Magisterska\layers\cow\aabb\layer_{}.png".format(val), format='png')
-        val += 1
-
-def plot_BVH(node_list):
-    
-    fig = go.Figure()
+    node_list_depth = defaultdict(list)
 
     for node in node_list:
-        
-        opacity_val = 0.05
-
-        if opacity_val < 0.9:
-            opacity_val += 0.05
-
-        bbox = node.get_bbox()
-
-        min_x = bbox.mins[0]
-        min_Y = bbox.mins[1]
-        min_Z = bbox.mins[2]
-
-        max_x = bbox.maxs[0]
-        max_Y = bbox.maxs[1]
-        max_Z = bbox.maxs[2]
-        fig.add_trace(go.Mesh3d(
-            
-            x = [min_x, min_x, max_x, max_x, min_x, min_x, max_x, max_x],
-            y = [min_Y, max_Y, max_Y, min_Y, min_Y, max_Y, max_Y, min_Y],
-            z = [min_Z, min_Z, min_Z, min_Z, max_Z, max_Z, max_Z, max_Z],
-            i = [7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
-            j = [3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
-            k = [0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
-            color='gray',
-            opacity=opacity_val,
-            alphahull = 44,
-            flatshading = True,
-            
-            lighting=dict(ambient=0.1,
-                            diffuse=1,
-                            fresnel=4,
-                            specular=0.5,
-                            roughness=0.05),
-            lightposition=dict(x=100,
-                            y=200,
-                            z=100)
-            
-        ))
-
-    ##fig.write_html(r"D:\OneDrive\Pulpit\Praca_Magisterska\layers\all")
-    fig.write_image(r"D:\OneDrive\Pulpit\Praca_Magisterska\layers\all.png", format='png')
-
-
-def save_obj(dict_depth):
+        node_list_depth[node.get_depth()].append(node.get_bbox())
 
     val = 0
 
-    for depth in dict_depth.values():
+    for depth in node_list_depth.values():
 
         i_list = [8, 1, 1, 1, 5, 5, 7, 7, 5, 1, 4, 3]
         j_list = [4, 5, 2, 3, 6, 7, 6, 3, 1, 2, 7, 4]
@@ -508,12 +445,14 @@ def save_obj(dict_depth):
             j_list_layer = [i + (8 * val) for i in j_list]
             k_list_layer = [i + (8 * val) for i in k_list]
 
-            with open(r"D:\OneDrive\Pulpit\Praca_Magisterska\obj\all.obj", "a") as f:
+            with open(f"all_{number}.obj", "a") as f:
                 for i in range(len(x)):
                     f.write("v {} {} {}\n".format(x[i], y[i], z[i]))
                 for i in range(12):
                     f.write("f {} {} {}\n".format(i_list_layer[i], j_list_layer[i], k_list_layer[i]))
                 val += 1
+    
+    return f"all_{number}.obj"
 
 def plot_BVH_from_obj(filename):
 
@@ -541,7 +480,6 @@ def plot_layer_sphere(dict_depth):
 
             fig.add_trace(go.Surface(x=X, y=Y, z=Z, opacity=1))
 
-        #fig.write_html(r"D:\OneDrive\Pulpit\Praca_Magisterska\layers\sphere\layer_{}".format(val))
         fig.write_image(r"D:\OneDrive\Pulpit\Praca_Magisterska\layers\cow\sphere\layer_{}.png".format(val), format='png')
         val += 1
 
@@ -604,10 +542,15 @@ def calculate_box_OBB(obj_list_copy):
 
     return world_box
 
-def plot_layer_OBB(dict_depth):
+def plot_BVH_from_obj_with_ray(node_list, ray_origin, ray_dest):
+
+    node_list_depth = defaultdict(list)
+
+    for node in node_list:
+        node_list_depth[node.get_depth()].append(node.get_bbox())
 
     val = 0
-    for depth in dict_depth.values():
+    for depth in node_list_depth.values():
 
         fig = go.Figure()
 
@@ -619,9 +562,55 @@ def plot_layer_OBB(dict_depth):
                 y = bbox.corners[:, 1],
                 z = bbox.corners[:, 2],
 
-                # i = [7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
-                # j = [3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
-                # k = [0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
+                i = [0, 5, 1, 2, 2, 3, 6, 1, 7, 4, 5, 5],
+                j = [6, 0, 4, 4, 3, 0, 5, 2, 0, 7, 7, 1],
+                k = [5, 7, 2, 3, 6, 6, 2, 5, 3, 3, 4, 4],
+                color='gray',
+                opacity=1,
+                alphahull = 44,
+                flatshading = True,
+                
+                lighting=dict(ambient=0.1,
+                                diffuse=1,
+                                fresnel=4,
+                                specular=0.5,
+                                roughness=0.05),
+                lightposition=dict(x=100,
+                                y=200,
+                                z=100)
+                
+
+            ))
+
+        val += 1
+
+    fig.add_trace(
+            go.Scatter3d(x=[ray_origin[0], ray_dest[0]],
+                        y=[ray_origin[1], ray_dest[1]],
+                        z=[ray_origin[2], ray_dest[2]],
+                        mode='lines'))
+    
+    fig.show()
+
+def plot_layer_OBB(node_list):
+
+    node_list_depth = defaultdict(list)
+
+    for node in node_list:
+        node_list_depth[node.get_depth()].append(node.get_bbox())
+
+    val = 0
+    for depth in node_list_depth.values():
+
+        fig = go.Figure()
+
+        for bbox in depth:
+
+            fig.add_trace(go.Mesh3d(
+                
+                x = bbox.corners[:, 0],
+                y = bbox.corners[:, 1],
+                z = bbox.corners[:, 2],
 
                 i = [0, 5, 1, 2, 2, 3, 6, 1, 7, 4, 5, 5],
                 j = [6, 0, 4, 4, 3, 0, 5, 2, 0, 7, 7, 1],
@@ -650,6 +639,4 @@ def plot_layer_OBB(dict_depth):
                             z=bbox.corners[:, 2],
                             mode='markers'))
 
-        #fig.write_html(r"D:\OneDrive\Pulpit\Praca_Magisterska\layers\obb\layer_{}".format(val))
-        fig.write_image(r"D:\OneDrive\Pulpit\Praca_Magisterska\layers\cow\obb\layer_{}.png".format(val), format='png')
         val += 1
