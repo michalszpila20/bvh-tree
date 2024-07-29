@@ -55,7 +55,7 @@ def ray_intersection_AABB(ray_origin, ray_dest, mins, maxs):
     else:
         return False, t_near
 
-def plot_BVH_from_obj_with_ray(filename, ray_origin, ray_dest):
+def plot_BVH_aabb_from_obj_with_ray(filename, ray_origin, ray_dest):
     
     verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK = open_obj_file(filename)
 

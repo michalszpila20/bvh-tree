@@ -1,12 +1,16 @@
-from obj_functions import plot_obj_file, plot_BVH_from_obj_with_ray, save_obj, plot_layer_OBB, open_obj_file, plot_BVH, calculate_box_AABB, build_triangles, find_centroids, calculate_box_sphere, calculate_box_OBB, calculate_box_sphere_ritter
+from obj_functions import plot_two_obj_file, plot_collisions, plot_obj_file, plot_BVH_from_obj_with_ray, save_obj, plot_layer_OBB, open_obj_file, calculate_box_AABB, build_triangles, find_centroids, calculate_box_sphere, calculate_box_OBB, calculate_box_sphere_ritter
 from ray_intersection.ray_intersection_utils import plot_OBB_ray
 from bvh import BVHNode
 from triangle import Triangle
 import statistics
 import sys
 from ray_intersection.ray_intersection import ray_intersect
+from ray_intersection.ray_intersection_AABB import plot_BVH_aabb_from_obj_with_ray
 import logging
 from collision_detection.collision_detection import BVH_collision_detection
+from collision_detection.collision_detection_AABB import plot_triangles_in_aabb
+import plotly.graph_objects as go
+import numpy as np
 
 #vertices coordiantes
 verticesX = []
@@ -89,7 +93,7 @@ def build_recursive(node, depth, node_list, bbox_type):
     logging.debug(f"right_index: {right_index}")
     logging.debug(f"right_index - left_index: {right_index - left_index}")
 
-    if right_index - left_index <= 256:
+    if right_index - left_index <= 16:
         node.make_leaf()
         logging.debug("Make leaf!")
         return node_list
@@ -242,6 +246,7 @@ def main():
     bbox_type = input("Box type: aabb / sphere / obb: ")
     filename_A = input("Choose obj file: bear / boat / cow / pumpkin / rabbit / teapot: ")
     test_type = input("Ray intersect [a] or collision detection [b]?: ")    
+    filename_B = None
 
     node_list_A = []
     node_list_B = []
@@ -251,8 +256,10 @@ def main():
     logging.debug(f"node_list_A : {node_list_A}")
 
     ray_origin = [1.223, -2.78, 10]
-    ray_dest = [-3, 5, -8]
+    ray_dest = [1.222, -5, 4]
     
+    plot_BVH_aabb_from_obj_with_ray(f"{filename_A}.obj.txt", ray_origin, ray_dest)
+
     if test_type == 'b':
         filename_B = input("Choose the second obj file: bear / boat / cow / pumpkin / rabbit / teapot: ")
         node_list_B = build(node_list_B, bbox_type, filename_B)
@@ -262,9 +269,11 @@ def main():
         else:
             logging.debug("The end without intersection")
     elif test_type == 'b':
-        BVH_collision_detection(node_list_A, node_list_B, bbox_type)
-        logging.debug("to do: collision test")
-    
+        collisions = BVH_collision_detection(node_list_A, node_list_B, bbox_type)
+        fig = plot_two_obj_file(f"{filename_A}.obj.txt", f"{filename_B}.obj.txt")
+        fig = plot_collisions(collisions, fig)
+        fig.show()
+        
 if __name__ == "__main__":
 
     logging.basicConfig(filename='app.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s', level=logging.DEBUG)

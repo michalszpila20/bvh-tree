@@ -1,6 +1,7 @@
 import logging
 import numpy as np
 import sys
+from collision_detection.collision_detection_utils import test_triangle_against_triangle, descend_A
 
 def test_obb_obb(obb_a, obb_b):
 
@@ -128,11 +129,41 @@ def test_obb_obb(obb_a, obb_b):
 
     return True
 
+def BVH_collision_obb(tree_a, tree_b, index_a, index_b, collisions):
+
+    logging.debug(f"index_a: {index_a}")
+    logging.debug(f"index_b: {index_b}")
+
+    logging.debug(f"tree_a: {tree_a}")
+    logging.debug(f"tree_b: {tree_b}")
+
+    obb_A = tree_a[index_a]
+    obb_B = tree_b[index_b]
+
+    if not test_obb_obb(obb_A, obb_B): return None
+
+    if obb_A.is_leaf() and obb_B.is_leaf():
+        logging.debug("Checking collisions on objects level.")
+        test_triangle_against_triangle(obb_A, obb_B, collisions)
+    else:
+        if descend_A(tree_a, index_a):
+            index_a_one = tree_a.index(obb_A.left)
+            index_a_two = tree_a.index(obb_A.right)
+            BVH_collision_obb(tree_a, tree_b, index_a_one, index_b, collisions)
+            BVH_collision_obb(tree_a, tree_b, index_a_two, index_b, collisions)
+        else:
+            index_b_one = tree_b.index(obb_B.left)
+            index_b_two = tree_b.index(obb_B.right)
+            BVH_collision_obb(tree_a, tree_b, index_a, index_b_one, collisions)
+            BVH_collision_obb(tree_a, tree_b, index_a, index_b_two, collisions)
+    
+    return collisions
+
 def collision_detection_obb(node_list_A, node_list_B):
+    
     logging.debug("collision_detection_obb")
 
-    obb_root_a = node_list_A[0]
-    obb_root_b = node_list_B[0]
+    collisions = []
 
-    is_collision = test_obb_obb(obb_root_a, obb_root_b)
-    logging.debug(f"is_collision: {is_collision}")
+    collisions = BVH_collision_obb(node_list_A, node_list_B, 0, 0, collisions)
+    logging.debug(f"collisions: {collisions}")

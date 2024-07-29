@@ -98,7 +98,7 @@ def plot_two_obj_file(filename_A, filename_B):
         )
     )
 
-    fig.show()
+    return fig
 
 def calculate_box_AABB(obj_list_copy):
 
@@ -640,3 +640,39 @@ def plot_layer_OBB(node_list):
                             mode='markers'))
 
         val += 1
+
+def plot_collisions(collisions, fig):
+
+    for collision in collisions:
+
+        x = [collision[0].vertices[0][0], collision[0].vertices[1][0], collision[0].vertices[2][0]]
+        y = [collision[0].vertices[0][1], collision[0].vertices[1][1], collision[0].vertices[2][1]]
+        z = [collision[0].vertices[0][2], collision[0].vertices[1][2], collision[0].vertices[2][2]]
+
+        logging.debug(f"---------------------------------")
+
+        logging.debug(f"x: {x}")
+        logging.debug(f"y: {y}")
+        logging.debug(f"z: {z}")
+
+        i = np.array([0])
+        j = np.array([1])
+        k = np.array([2])
+
+        x1 = [collision[1].vertices[0][0], collision[1].vertices[1][0], collision[1].vertices[2][0]]
+        y1 = [collision[1].vertices[0][1], collision[1].vertices[1][1], collision[1].vertices[2][1]]
+        z1 = [collision[1].vertices[0][2], collision[1].vertices[1][2], collision[1].vertices[2][2]]
+
+        logging.debug(f"x: {x1}")
+        logging.debug(f"y: {y1}")
+        logging.debug(f"z: {z1}")
+
+
+        i1 = np.array([0])
+        j1 = np.array([1])
+        k1 = np.array([2])
+
+        fig.add_trace(go.Mesh3d(x=x, y=y, z=z, alphahull=5, opacity=0.4, color='red', i=i, j=j, k=k))
+        fig.add_trace(go.Mesh3d(x=x1, y=y1, z=z1, alphahull=5, opacity=0.4, color='red', i=i1, j=j1, k=k1))
+    
+    return fig
