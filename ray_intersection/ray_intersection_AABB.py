@@ -48,7 +48,9 @@ def ray_intersection_AABB(ray_origin, ray_dest, mins, maxs):
     t_near = max(t_X_near, t_Y_near, t_Z_near)
     t_far = min(t_X_far, t_Y_far, t_Z_far)
 
-    if t_near < t_far:
+    logging.debug(f"t_near is: {t_near}, t_far is: {t_far}")
+
+    if t_near < t_far and t_near >= 0 and t_near <= magnitude:
         return True, t_near
     else:
         return False, t_near
@@ -151,7 +153,12 @@ def intersection_AABB_closest(ray_origin, ray_dest, node_list):
     ray_dest_new = ray_dest 
     closest_hit = None
 
-    if not ray_intersection_AABB(ray_origin, ray_dest, mins, maxs):
+    interesection_root, t_near_root = ray_intersection_AABB(ray_origin, ray_dest, mins, maxs)
+
+    logging.debug(f"interesection_root: {interesection_root}")
+    logging.debug(f"t_near_root: {t_near_root}")
+
+    if not interesection_root:
         logging.debug("No intersection in root node, returing False.")
         return False
     while 1:

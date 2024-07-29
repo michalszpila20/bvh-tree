@@ -26,8 +26,14 @@ def plot_triangle_ray(triangle, ray_origin, ray_dest):
                  mode='lines'))
     fig.show()
 
-def plot_OBB_ray(corners, ray_origin, ray_dest):
+def plot_OBB_ray(node_list_A, ray_origin, ray_dest):
     
+    corners = []
+
+    for node in node_list_A:
+        corner = node.get_bbox().corners
+        corners.append(corner)
+
     fig = go.Figure()
 
     fig.add_trace(go.Mesh3d(
