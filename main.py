@@ -1,10 +1,12 @@
-from obj_functions import open_obj_file, calculate_box_AABB, build_triangles, find_centroids, calculate_box_sphere, calculate_box_OBB, calculate_box_sphere_ritter
+from obj_functions import plot_obj_file, plot_BVH_from_obj_with_ray, save_obj, plot_layer_OBB, open_obj_file, plot_BVH, calculate_box_AABB, build_triangles, find_centroids, calculate_box_sphere, calculate_box_OBB, calculate_box_sphere_ritter
+from ray_intersection.ray_intersection_utils import plot_OBB_ray
 from bvh import BVHNode
 from triangle import Triangle
 import statistics
 import sys
 from ray_intersection.ray_intersection import ray_intersect
 import logging
+from collision_detection.collision_detection import BVH_collision_detection
 
 #vertices coordiantes
 verticesX = []
@@ -238,22 +240,29 @@ def build_recursive(node, depth, node_list, bbox_type):
 def main():
 
     bbox_type = input("Box type: aabb / sphere / obb: ")
-    filename = input("Choose obj file: bear / boat / cow / pumpkin / rabbit / teapot: ")
-
-    node_list = []
-    node_list = build(node_list, bbox_type, filename)
-    
-    ray_origin = [1.223, -2.78, 10]
-    ray_dest = [-3, 5, -8]
-
+    filename_A = input("Choose obj file: bear / boat / cow / pumpkin / rabbit / teapot: ")
     test_type = input("Ray intersect [a] or collision detection [b]?: ")    
 
+    node_list_A = []
+    node_list_B = []
+
+    node_list_A = build(node_list_A, bbox_type, filename_A)
+
+    logging.debug(f"node_list_A : {node_list_A}")
+
+    ray_origin = [1.223, -2.78, 10]
+    ray_dest = [-3, 5, -8]
+    
+    if test_type == 'b':
+        filename_B = input("Choose the second obj file: bear / boat / cow / pumpkin / rabbit / teapot: ")
+        node_list_B = build(node_list_B, bbox_type, filename_B)
     if test_type == 'a':
-        if ray_intersect(ray_origin, ray_dest, node_list, bbox_type):
+        if ray_intersect(ray_origin, ray_dest, node_list_A, bbox_type):
             logging.debug("The end with intersection")
         else:
             logging.debug("The end without intersection")
     elif test_type == 'b':
+        BVH_collision_detection(node_list_A, node_list_B, bbox_type)
         logging.debug("to do: collision test")
     
 if __name__ == "__main__":
