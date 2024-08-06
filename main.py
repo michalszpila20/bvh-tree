@@ -258,7 +258,7 @@ def main():
     ray_origin = [1.223, -2.78, 10]
     ray_dest = [1.222, -5, 4]
     
-    plot_BVH_aabb_from_obj_with_ray(f"{filename_A}.obj.txt", ray_origin, ray_dest)
+    # plot_BVH_aabb_from_obj_with_ray(f"{filename_A}.obj.txt", ray_origin, ray_dest)
 
     if test_type == 'b':
         filename_B = input("Choose the second obj file: bear / boat / cow / pumpkin / rabbit / teapot: ")

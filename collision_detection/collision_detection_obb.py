@@ -2,21 +2,25 @@ import logging
 import numpy as np
 import sys
 from collision_detection.collision_detection_utils import test_triangle_against_triangle, descend_A
+from obj_functions import plot_2OBB
+import time
 
 def test_obb_obb(obb_a, obb_b):
 
     radius_a = 0
     radius_b = 0
 
-    radius = np.arange(2, 11).reshape(3, 3)
-    abs_radius = np.arange(2, 11).reshape(3, 3)
+    radius = np.zeros((3, 3))
+    abs_radius = np.zeros((3, 3))
+    EPSILON = sys.float_info.epsilon
 
     logging.debug(f"obb_a.rotation: {obb_a.get_bbox().rotation}")
     logging.debug(f"obb_a.rotation[0]: {obb_a.get_bbox().rotation[0]}")
 
     for i in range(0, 3):
         for j in range(0, 3):
-            radius[i][j] = np.dot(obb_a.get_bbox().rotation[i], obb_a.get_bbox().rotation[j])
+            logging.debug(f"obb_a.get_bbox().rotation[i]: {obb_a.get_bbox().rotation[i]}")
+            radius[i][j] = np.dot(obb_a.get_bbox().rotation[i], obb_b.get_bbox().rotation[j])
 
     logging.debug(f"radius: {radius}")
 
@@ -24,7 +28,8 @@ def test_obb_obb(obb_a, obb_b):
 
     logging.debug(f"t: {t}")
 
-    t = np.array([np.dot(t, obb_a.get_bbox().rotation[0]), np.dot(t, obb_a.get_bbox().rotation[2]), np.dot(t, obb_a.get_bbox().rotation[2])])
+    ## check
+    t = np.array([np.dot(t, obb_a.get_bbox().rotation[0]), np.dot(t, obb_a.get_bbox().rotation[1]), np.dot(t, obb_a.get_bbox().rotation[2])])
 
     logging.debug(f"t: {t}")
 
@@ -131,6 +136,8 @@ def test_obb_obb(obb_a, obb_b):
 
 def BVH_collision_obb(tree_a, tree_b, index_a, index_b, collisions):
 
+    logging.debug("===============================================")
+
     logging.debug(f"index_a: {index_a}")
     logging.debug(f"index_b: {index_b}")
 
@@ -140,18 +147,37 @@ def BVH_collision_obb(tree_a, tree_b, index_a, index_b, collisions):
     obb_A = tree_a[index_a]
     obb_B = tree_b[index_b]
 
-    if not test_obb_obb(obb_A, obb_B): return None
+    logging.debug(f"obb_A.corners: {obb_A.get_bbox().corners}")
+    logging.debug(f"obb_A.centre: {obb_A.get_bbox().centre}")
+    logging.debug(f"obb_A.half_extents: {obb_A.get_bbox().half_extents}")
+    logging.debug(f"obb_A.rotation: {obb_A.get_bbox().rotation}")
+
+    logging.debug(f"obb_B.corners: {obb_B.get_bbox().corners}")
+    logging.debug(f"obb_B.centre: {obb_B.get_bbox().centre}")
+    logging.debug(f"obb_B.half_extents: {obb_B.get_bbox().half_extents}")
+    logging.debug(f"obb_B.rotation: {obb_B.get_bbox().rotation}")
+
+    logging.debug(f"test_obb_obb: {test_obb_obb(obb_A, obb_B)}")
+    
+    # plot_2OBB(obb_A, obb_B)
+    # time.sleep(10)
+
+    if not test_obb_obb(obb_A, obb_B): 
+        logging.debug("No intersection between two obb. Return with None.")
+        return
 
     if obb_A.is_leaf() and obb_B.is_leaf():
         logging.debug("Checking collisions on objects level.")
         test_triangle_against_triangle(obb_A, obb_B, collisions)
     else:
         if descend_A(tree_a, index_a):
+            logging.debug("descend_A")
             index_a_one = tree_a.index(obb_A.left)
             index_a_two = tree_a.index(obb_A.right)
             BVH_collision_obb(tree_a, tree_b, index_a_one, index_b, collisions)
             BVH_collision_obb(tree_a, tree_b, index_a_two, index_b, collisions)
         else:
+            logging.debug("descend_B")
             index_b_one = tree_b.index(obb_B.left)
             index_b_two = tree_b.index(obb_B.right)
             BVH_collision_obb(tree_a, tree_b, index_a, index_b_one, collisions)
@@ -164,6 +190,23 @@ def collision_detection_obb(node_list_A, node_list_B):
     logging.debug("collision_detection_obb")
 
     collisions = []
+    leaves_a = []
+    leaves_b = []
+
+    logging.debug(f"node_list_A: {len(node_list_A)}, node_list_B: {len(node_list_B)}")
+
+    for node in node_list_A:
+        if node.leaf == True:
+            leaves_a.append(node)
+
+    for node in node_list_B:
+        if node.leaf == True:
+            leaves_b.append(node)
+
+    logging.debug(f"leaves_a: {len(leaves_a)}, leaves_b: {len(leaves_b)}")
 
     collisions = BVH_collision_obb(node_list_A, node_list_B, 0, 0, collisions)
     logging.debug(f"collisions: {collisions}")
+    logging.debug(f"size of collisions: {len(collisions)}")
+
+    return collisions

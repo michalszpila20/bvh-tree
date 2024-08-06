@@ -676,3 +676,60 @@ def plot_collisions(collisions, fig):
         fig.add_trace(go.Mesh3d(x=x1, y=y1, z=z1, alphahull=5, opacity=0.4, color='red', i=i1, j=j1, k=k1))
     
     return fig
+
+def plot_2OBB(obb_a, obb_b):
+
+    fig = go.Figure()
+
+    box_a = obb_a.get_bbox()
+    box_b = obb_b.get_bbox()
+
+    fig.add_trace(go.Mesh3d(
+                
+        x = box_a.corners[:, 0],
+        y = box_a.corners[:, 1],
+        z = box_a.corners[:, 2],
+
+        i = [0, 5, 1, 2, 2, 3, 6, 1, 7, 4, 5, 5],
+        j = [6, 0, 4, 4, 3, 0, 5, 2, 0, 7, 7, 1],
+        k = [5, 7, 2, 3, 6, 6, 2, 5, 3, 3, 4, 4],
+        color='gray',
+        opacity=0.1,
+        alphahull = 44,
+        flatshading = True,
+                
+        lighting=dict(ambient=0.1,
+                    diffuse=1,
+                    fresnel=4,
+                    specular=0.5,
+                    roughness=0.05),
+        lightposition=dict(x=100,
+                            y=200,
+                            z=100)
+            ))
+    
+    fig.add_trace(go.Mesh3d(
+                
+        x = box_b.corners[:, 0],
+        y = box_b.corners[:, 1],
+        z = box_b.corners[:, 2],
+
+        i = [0, 5, 1, 2, 2, 3, 6, 1, 7, 4, 5, 5],
+        j = [6, 0, 4, 4, 3, 0, 5, 2, 0, 7, 7, 1],
+        k = [5, 7, 2, 3, 6, 6, 2, 5, 3, 3, 4, 4],
+        color='red',
+        opacity=0.1,
+        alphahull = 44,
+        flatshading = True,
+                
+        lighting=dict(ambient=0.1,
+                    diffuse=1,
+                    fresnel=4,
+                    specular=0.5,
+                    roughness=0.05),
+        lightposition=dict(x=100,
+                            y=200,
+                            z=100)
+            ))
+
+    fig.show()
