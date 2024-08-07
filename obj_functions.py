@@ -1,4 +1,5 @@
 # importing mplot3d toolkits, numpy and matplotlib
+import time
 import plotly.graph_objects as go
 import numpy as np
 from AABB import AABB
@@ -488,12 +489,9 @@ def calculate_box_OBB(obj_list_copy):
     points_3D = []
 
     for triangle in obj_list_copy:
-        #Triangle vertex 1
         points_3D.append(tuple([triangle.vertices[0][0], triangle.vertices[0][1], triangle.vertices[0][2]]))
-        #Triangle vertex 2
-        points_3D.append(tuple([triangle.vertices[0][0], triangle.vertices[0][1], triangle.vertices[0][2]]))
-        #Triangle vertex 3
-        points_3D.append(tuple([triangle.vertices[0][0], triangle.vertices[0][1], triangle.vertices[0][2]]))
+        points_3D.append(tuple([triangle.vertices[1][0], triangle.vertices[1][1], triangle.vertices[1][2]]))
+        points_3D.append(tuple([triangle.vertices[2][0], triangle.vertices[2][1], triangle.vertices[2][2]]))
 
     ca = np.cov(points_3D, y=None, rowvar=0, bias=1)
     logging.debug(f"ca: {ca}")
@@ -641,7 +639,9 @@ def plot_layer_OBB(node_list):
 
         val += 1
 
-def plot_collisions(collisions, fig):
+def plot_collisions(collisions, fig, bbox_type_A, bbox_type_B):
+    
+    collisions_len = len(collisions)
 
     for collision in collisions:
 
@@ -674,10 +674,11 @@ def plot_collisions(collisions, fig):
 
         fig.add_trace(go.Mesh3d(x=x, y=y, z=z, alphahull=5, opacity=0.4, color='red', i=i, j=j, k=k))
         fig.add_trace(go.Mesh3d(x=x1, y=y1, z=z1, alphahull=5, opacity=0.4, color='red', i=i1, j=j1, k=k1))
+        fig.update_layout(title_text=f"Collision {bbox_type_A} against {bbox_type_B}, number of collisions: {collisions_len}")
     
     return fig
 
-def plot_2OBB(obb_a, obb_b):
+def plot_2OBB(obb_a, obb_b, result, aabb):
 
     fig = go.Figure()
 
@@ -732,4 +733,75 @@ def plot_2OBB(obb_a, obb_b):
                             z=100)
             ))
 
+    fig.update_layout(title_text=f"OBB test result: {result}, OBB_A: {obb_a}, OBB_B: {obb_b}")
     fig.show()
+
+def plot_OBB_triangles(bbox):
+
+    box = bbox.get_bbox()
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Mesh3d(
+
+    x = box.corners[:, 0],
+    y = box.corners[:, 1],
+    z = box.corners[:, 2],
+
+    i = [0, 5, 1, 2, 2, 3, 6, 1, 7, 4, 5, 5],
+    j = [6, 0, 4, 4, 3, 0, 5, 2, 0, 7, 7, 1],
+    k = [5, 7, 2, 3, 6, 6, 2, 5, 3, 3, 4, 4],
+    color='gray',
+    opacity=0.1,
+    alphahull = 44,
+    flatshading = True,
+
+    lighting=dict(ambient=0.1,
+                diffuse=1,
+                fresnel=4,
+                specular=0.5,
+                roughness=0.05),
+    lightposition=dict(x=100,
+                        y=200,
+                        z=100)
+        ))
+
+    x = []
+    y = []
+    z = []    
+
+    i = []
+    j = []
+    k = []
+
+    num = 0
+    for triangle in bbox.get_triangles():
+
+        x.append(triangle.vertices[0][0])
+        x.append(triangle.vertices[1][0])
+        x.append(triangle.vertices[2][0])
+
+        y.append(triangle.vertices[0][1])
+        y.append(triangle.vertices[1][1])
+        y.append(triangle.vertices[2][1])
+
+        z.append(triangle.vertices[0][2])
+        z.append(triangle.vertices[1][2])
+        z.append(triangle.vertices[2][2])
+
+        logging.debug(f"---------------------------------")
+
+        logging.debug(f"x: {x}")
+        logging.debug(f"y: {y}")
+        logging.debug(f"z: {z}")
+
+    
+        i.append([3 * num])
+        j.append([(3 * num) + 1])
+        k.append([(3 * num) + 2])
+        num += 1 
+
+    fig.add_trace(go.Mesh3d(x=x, y=y, z=z, alphahull=5, opacity=0.4, color='red', i=i, j=j, k=k))
+
+    fig.show()
+    time.sleep(30)

@@ -1,4 +1,4 @@
-from obj_functions import plot_two_obj_file, plot_collisions, plot_obj_file, plot_BVH_from_obj_with_ray, save_obj, plot_layer_OBB, open_obj_file, calculate_box_AABB, build_triangles, find_centroids, calculate_box_sphere, calculate_box_OBB, calculate_box_sphere_ritter
+from obj_functions import plot_two_obj_file, plot_OBB_triangles, plot_collisions, plot_obj_file, plot_BVH_from_obj_with_ray, save_obj, plot_layer_OBB, open_obj_file, calculate_box_AABB, build_triangles, find_centroids, calculate_box_sphere, calculate_box_OBB, calculate_box_sphere_ritter
 from ray_intersection.ray_intersection_utils import plot_OBB_ray
 from bvh import BVHNode
 from triangle import Triangle
@@ -243,35 +243,40 @@ def build_recursive(node, depth, node_list, bbox_type):
 
 def main():
 
-    bbox_type = input("Box type: aabb / sphere / obb: ")
+    bbox_type_A = input("Box type: aabb / sphere / obb: ")
     filename_A = input("Choose obj file: bear / boat / cow / pumpkin / rabbit / teapot: ")
     test_type = input("Ray intersect [a] or collision detection [b]?: ")    
     filename_B = None
+    bbox_type_B = None
 
     node_list_A = []
     node_list_B = []
 
-    node_list_A = build(node_list_A, bbox_type, filename_A)
+    node_list_A = build(node_list_A, bbox_type_A, filename_A)
 
     logging.debug(f"node_list_A : {node_list_A}")
 
+    # ray_origin = [1.223, -2.78, 10]
+    # ray_dest = [1.222, -5, 4]
+
     ray_origin = [1.223, -2.78, 10]
-    ray_dest = [1.222, -5, 4]
+    ray_dest = [-3, 5, -8]
     
-    # plot_BVH_aabb_from_obj_with_ray(f"{filename_A}.obj.txt", ray_origin, ray_dest)
+    plot_BVH_aabb_from_obj_with_ray(f"{filename_A}.obj.txt", ray_origin, ray_dest)
 
     if test_type == 'b':
+        bbox_type_B = input("Box type: aabb / sphere / obb: ")
         filename_B = input("Choose the second obj file: bear / boat / cow / pumpkin / rabbit / teapot: ")
-        node_list_B = build(node_list_B, bbox_type, filename_B)
+        node_list_B = build(node_list_B, bbox_type_B, filename_B)
     if test_type == 'a':
-        if ray_intersect(ray_origin, ray_dest, node_list_A, bbox_type):
+        if ray_intersect(ray_origin, ray_dest, node_list_A, bbox_type_A):
             logging.debug("The end with intersection")
         else:
             logging.debug("The end without intersection")
     elif test_type == 'b':
-        collisions = BVH_collision_detection(node_list_A, node_list_B, bbox_type)
+        collisions = BVH_collision_detection(node_list_A, node_list_B, bbox_type_A, bbox_type_B)
         fig = plot_two_obj_file(f"{filename_A}.obj.txt", f"{filename_B}.obj.txt")
-        fig = plot_collisions(collisions, fig)
+        fig = plot_collisions(collisions, fig, bbox_type_A, bbox_type_B)
         fig.show()
         
 if __name__ == "__main__":

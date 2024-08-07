@@ -1,7 +1,11 @@
 import logging
 import numpy as np
 import sys
-from collision_detection.collision_detection_utils import test_triangle_against_triangle, descend_A
+from OBB import OBB
+
+from bvh import BVHNode
+from collision_detection.collision_detection_sphere import test_sphere_obb
+from collision_detection.collision_detection_utils import test_triangle_against_triangle, descend_A, build_obb_from_aabb, temp_SAT
 from obj_functions import plot_2OBB
 import time
 
@@ -10,17 +14,20 @@ def test_obb_obb(obb_a, obb_b):
     radius_a = 0
     radius_b = 0
 
-    radius = np.zeros((3, 3))
-    abs_radius = np.zeros((3, 3))
-    EPSILON = sys.float_info.epsilon
+    radius = np.zeros((3, 3), dtype = 'complex_')
+    abs_radius = np.zeros((3, 3), dtype = 'complex_')
+    EPSILON = 1e-6
+    # EPSILON = sys.float_info.epsilon
 
+    u_a = np.array([obb_a.get_bbox().rotation[:, 0], obb_a.get_bbox().rotation[:, 1], obb_a.get_bbox().rotation[:, 2]])
+    u_b = np.array([obb_b.get_bbox().rotation[:, 0], obb_b.get_bbox().rotation[:, 1], obb_b.get_bbox().rotation[:, 2]])
     logging.debug(f"obb_a.rotation: {obb_a.get_bbox().rotation}")
     logging.debug(f"obb_a.rotation[0]: {obb_a.get_bbox().rotation[0]}")
 
     for i in range(0, 3):
         for j in range(0, 3):
             logging.debug(f"obb_a.get_bbox().rotation[i]: {obb_a.get_bbox().rotation[i]}")
-            radius[i][j] = np.dot(obb_a.get_bbox().rotation[i], obb_b.get_bbox().rotation[j])
+            radius[i][j] = np.dot(u_a[i], u_b[j])
 
     logging.debug(f"radius: {radius}")
 
@@ -29,13 +36,13 @@ def test_obb_obb(obb_a, obb_b):
     logging.debug(f"t: {t}")
 
     ## check
-    t = np.array([np.dot(t, obb_a.get_bbox().rotation[0]), np.dot(t, obb_a.get_bbox().rotation[1]), np.dot(t, obb_a.get_bbox().rotation[2])])
+    t = np.array([np.dot(t, u_a[0]), np.dot(t, u_a[1]), np.dot(t, u_a[2])])
 
     logging.debug(f"t: {t}")
 
     for i in range(0, 3):
         for j in range(0, 3):
-            abs_radius[i][j] = abs(radius[i][j]) + sys.float_info.epsilon
+            abs_radius[i][j] = abs(radius[i][j]) + EPSILON
 
     logging.debug(f"abs_radius: {abs_radius}")
 
@@ -134,37 +141,31 @@ def test_obb_obb(obb_a, obb_b):
 
     return True
 
-def BVH_collision_obb(tree_a, tree_b, index_a, index_b, collisions):
+def BVH_collision_obb(tree_a, tree_b, index_a, index_b, bbox_type_B, collisions):
 
     logging.debug("===============================================")
-
-    logging.debug(f"index_a: {index_a}")
-    logging.debug(f"index_b: {index_b}")
-
-    logging.debug(f"tree_a: {tree_a}")
-    logging.debug(f"tree_b: {tree_b}")
-
+    
     obb_A = tree_a[index_a]
     obb_B = tree_b[index_b]
 
-    logging.debug(f"obb_A.corners: {obb_A.get_bbox().corners}")
-    logging.debug(f"obb_A.centre: {obb_A.get_bbox().centre}")
-    logging.debug(f"obb_A.half_extents: {obb_A.get_bbox().half_extents}")
-    logging.debug(f"obb_A.rotation: {obb_A.get_bbox().rotation}")
+    logging.debug(f"OBB_A: {obb_A}, OBB_B: {obb_B}")
 
-    logging.debug(f"obb_B.corners: {obb_B.get_bbox().corners}")
-    logging.debug(f"obb_B.centre: {obb_B.get_bbox().centre}")
-    logging.debug(f"obb_B.half_extents: {obb_B.get_bbox().half_extents}")
-    logging.debug(f"obb_B.rotation: {obb_B.get_bbox().rotation}")
+    if bbox_type_B == "obb":
+        if not test_obb_obb(obb_A, obb_B): 
+            logging.debug("No intersection between two obb. Return with None.")
+            return
+    elif bbox_type_B == "sphere":
 
-    logging.debug(f"test_obb_obb: {test_obb_obb(obb_A, obb_B)}")
-    
-    # plot_2OBB(obb_A, obb_B)
-    # time.sleep(10)
+        result, q = test_sphere_obb(obb_B, obb_A)
+        if not result: return None
 
-    if not test_obb_obb(obb_A, obb_B): 
-        logging.debug("No intersection between two obb. Return with None.")
-        return
+    elif bbox_type_B == "aabb":
+
+        corners, center, diff, rotation = build_obb_from_aabb(obb_B)
+        obb_from_aabb = OBB(corners, center, diff, rotation)
+        temp_node = BVHNode(None)
+        temp_node.set_bbox(obb_from_aabb)
+        if not test_obb_obb(obb_A, temp_node): return None
 
     if obb_A.is_leaf() and obb_B.is_leaf():
         logging.debug("Checking collisions on objects level.")
@@ -174,18 +175,18 @@ def BVH_collision_obb(tree_a, tree_b, index_a, index_b, collisions):
             logging.debug("descend_A")
             index_a_one = tree_a.index(obb_A.left)
             index_a_two = tree_a.index(obb_A.right)
-            BVH_collision_obb(tree_a, tree_b, index_a_one, index_b, collisions)
-            BVH_collision_obb(tree_a, tree_b, index_a_two, index_b, collisions)
+            BVH_collision_obb(tree_a, tree_b, index_a_one, index_b, bbox_type_B, collisions)
+            BVH_collision_obb(tree_a, tree_b, index_a_two, index_b, bbox_type_B, collisions)
         else:
             logging.debug("descend_B")
             index_b_one = tree_b.index(obb_B.left)
             index_b_two = tree_b.index(obb_B.right)
-            BVH_collision_obb(tree_a, tree_b, index_a, index_b_one, collisions)
-            BVH_collision_obb(tree_a, tree_b, index_a, index_b_two, collisions)
+            BVH_collision_obb(tree_a, tree_b, index_a, index_b_one, bbox_type_B, collisions)
+            BVH_collision_obb(tree_a, tree_b, index_a, index_b_two, bbox_type_B, collisions)
     
     return collisions
 
-def collision_detection_obb(node_list_A, node_list_B):
+def collision_detection_obb(node_list_A, node_list_B, bbox_type_B):
     
     logging.debug("collision_detection_obb")
 
@@ -205,7 +206,7 @@ def collision_detection_obb(node_list_A, node_list_B):
 
     logging.debug(f"leaves_a: {len(leaves_a)}, leaves_b: {len(leaves_b)}")
 
-    collisions = BVH_collision_obb(node_list_A, node_list_B, 0, 0, collisions)
+    collisions = BVH_collision_obb(node_list_A, node_list_B, 0, 0, bbox_type_B, collisions)
     logging.debug(f"collisions: {collisions}")
     logging.debug(f"size of collisions: {len(collisions)}")
 
