@@ -5,7 +5,7 @@ from OBB import OBB
 
 from bvh import BVHNode
 from collision_detection.collision_detection_sphere import test_sphere_obb
-from collision_detection.collision_detection_utils import test_triangle_against_triangle, descend_A, build_obb_from_aabb, temp_SAT
+from collision_detection.collision_detection_utils import test_triangle_against_triangle, descend_A, build_obb_from_aabb
 from obj_functions import plot_2OBB
 import time
 
@@ -17,7 +17,6 @@ def test_obb_obb(obb_a, obb_b):
     radius = np.zeros((3, 3), dtype = 'complex_')
     abs_radius = np.zeros((3, 3), dtype = 'complex_')
     EPSILON = 1e-6
-    # EPSILON = sys.float_info.epsilon
 
     u_a = np.array([obb_a.get_bbox().rotation[:, 0], obb_a.get_bbox().rotation[:, 1], obb_a.get_bbox().rotation[:, 2]])
     u_b = np.array([obb_b.get_bbox().rotation[:, 0], obb_b.get_bbox().rotation[:, 1], obb_b.get_bbox().rotation[:, 2]])

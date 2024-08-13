@@ -1,4 +1,3 @@
-# importing mplot3d toolkits, numpy and matplotlib
 import time
 import plotly.graph_objects as go
 import numpy as np
@@ -8,6 +7,7 @@ import math
 from sphere import sphere 
 import logging
 from collections import defaultdict
+import os
 
 def open_obj_file(filename):
 
@@ -15,11 +15,6 @@ def open_obj_file(filename):
     verticesX = []
     verticesY = []
     verticesZ = []
-
-    # normal vectors coordiantes 
-    verticesNX = []
-    verticesNY = []
-    verticesNZ = []
 
     # faces (triangles) 
     verticesI = []
@@ -32,18 +27,25 @@ def open_obj_file(filename):
     Lines = file.readlines()
 
     for line in Lines:
-        if line.__contains__('v'):
-            verticesX.append(float(line.split(" ")[1]))
-            verticesY.append(float(line.split(" ")[2]))
-            verticesZ.append(float(line.strip().split(" ")[3]))
-        elif line.__contains__('f'):
-            verticesI.append(int(line.split(" ")[1]) -1)
-            verticesJ.append(int(line.split(" ")[2]) -1)
-            verticesK.append(int(line.strip().split(" ")[3]) -1)   
+        if line.__contains__('f'):
+            if line.__contains__('/'):
+                new_list = [line.strip().split()[1].split('/')[0], line.strip().split()[2].split('/')[0], line.strip().split()[3].split('/')[0]]
+                verticesI.append(int(new_list[0]) -1)
+                verticesJ.append(int(new_list[1]) -1)
+                verticesK.append(int(new_list[2]) -1)
+            else:
+                verticesI.append(int(line.strip().split()[1]) -1)
+                verticesJ.append(int(line.strip().split()[2]) -1)
+                verticesK.append(int(line.strip().split()[3]) -1)   
         elif line.__contains__('vn'):
-            verticesNX.append(int(line.split(" ")[1]) -1)
-            verticesNY.append(int(line.split(" ")[2]) -1)
-            verticesNZ.append(int(line.strip().split(" ")[3]) -1)
+            continue
+        elif line.__contains__('vt'):
+            continue
+        elif line.__contains__('v'):
+            verticesX.append(float(line.strip().split()[1]))
+            verticesY.append(float(line.strip().split()[2]))
+            verticesZ.append(float(line.strip().split()[3]))
+
  
     return verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK
 
@@ -446,7 +448,7 @@ def save_obj(node_list, number):
             j_list_layer = [i + (8 * val) for i in j_list]
             k_list_layer = [i + (8 * val) for i in k_list]
 
-            with open(f"all_{number}.obj", "a") as f:
+            with open(f"all_{number}.obj", "w") as f:
                 for i in range(len(x)):
                     f.write("v {} {} {}\n".format(x[i], y[i], z[i]))
                 for i in range(12):
@@ -805,3 +807,95 @@ def plot_OBB_triangles(bbox):
 
     fig.show()
     time.sleep(30)
+
+def plot_all_AABB(filename):
+
+    plot_BVH_from_obj(filename)
+
+def open_obj_file_plot(filename, x_axis, y_axis, z_axis, rot_x_axis, rot_y_axis, rot_z_axis):
+    
+    verticesX_rotated, verticesY_rotated, verticesZ_rotated, verticesI, verticesJ, verticesK = rotate_obj(filename, rot_x_axis, rot_y_axis, rot_z_axis)
+
+    verticesX_rotated_moved = []
+    verticesY_rotated_moved = []
+    verticesZ_rotated_moved = []
+
+    for vert_x in verticesX_rotated:
+        vert_x += x_axis
+        verticesX_rotated_moved.append(vert_x)
+    
+    for vert_y in verticesY_rotated:
+        vert_y += y_axis
+        verticesY_rotated_moved.append(vert_y)
+    
+    for vert_z in verticesZ_rotated:
+        vert_z += z_axis
+        verticesZ_rotated_moved.append(vert_z)
+
+    plot_obj_file(verticesX_rotated_moved, verticesY_rotated_moved, verticesZ_rotated_moved, verticesI, verticesJ, verticesK)
+        
+    return verticesX_rotated_moved, verticesY_rotated_moved, verticesZ_rotated_moved, verticesI, verticesJ, verticesK
+
+def rotate_obj(filename, rot_x_axis, rot_y_axis, rot_z_axis):
+
+    logging.debug("rotate")
+
+    """Open .obj file"""
+
+    script_dir = os.path.dirname(__file__) #<-- absolute dir the script is in
+    rel_path = f"obj/examples/{filename}.obj"
+    abs_file_path = os.path.join(script_dir, rel_path)
+
+    verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK = open_obj_file(abs_file_path)
+
+    centroid = [sum(verticesX)/len(verticesX), sum(verticesY)/len(verticesY), sum(verticesZ)/len(verticesZ)]
+    logging.debug(f"centroid: {centroid}")
+
+    new_verticesX = []
+    new_verticesY = []
+    new_verticesZ = []
+
+    for vert_x in verticesX:
+        vert_x += -centroid[0]
+        new_verticesX.append(vert_x)
+    
+    for vert_y in verticesY:
+        vert_y += -centroid[1]
+        new_verticesY.append(vert_y)
+    
+    for vert_z in verticesZ:
+        vert_z += -centroid[2]
+        new_verticesZ.append(vert_z)
+
+    new_centroid = [sum(new_verticesX)/len(new_verticesX), sum(new_verticesY)/len(new_verticesY), sum(new_verticesZ)/len(new_verticesZ)]
+    logging.debug(f"centroid: {new_centroid}")
+
+    rot_x_axis_rad = math.radians(rot_x_axis)
+    rot_y_axis_rad = math.radians(rot_y_axis)
+    rot_z_axis_rad = math.radians(rot_z_axis)
+
+    Rx = np.array([[1, 0, 0],
+                    [0, math.cos(rot_x_axis_rad), -math.sin(rot_x_axis_rad)],
+                    [0, math.sin(rot_x_axis_rad), math.cos(rot_x_axis_rad)]])
+
+    Ry = np.array([[math.cos(rot_y_axis_rad), 0, math.sin(rot_y_axis_rad)],
+                    [0, 1, 0],
+                    [-math.sin(rot_y_axis_rad), 0, math.cos(rot_y_axis_rad)]])
+    
+    Rz = np.array([[math.cos(rot_z_axis_rad), -math.sin(rot_z_axis_rad), 0],
+                    [math.sin(rot_z_axis_rad), math.cos(rot_z_axis_rad), 0],
+                    [0, 0, 1]])
+
+    R = Rz @ Ry @ Rx
+
+    points = np.vstack([new_verticesX, new_verticesY, new_verticesZ])
+    logging.debug(f"points: {points}")
+
+    rotated_points = R @ points
+    logging.debug(f"rotated_points: {rotated_points}")
+
+    verticesX_rotated = rotated_points.tolist()[0]
+    verticesY_rotated = rotated_points.tolist()[1]
+    verticesZ_rotated = rotated_points.tolist()[2]
+
+    return verticesX_rotated, verticesY_rotated, verticesZ_rotated, verticesI, verticesJ, verticesK

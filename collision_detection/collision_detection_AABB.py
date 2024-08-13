@@ -5,7 +5,7 @@ from collision_detection.collision_detection_obb import test_obb_obb
 from obj_functions import plot_2OBB, save_obj, plot_two_obj_file
 import numpy as np
 import math
-from collision_detection.collision_detection_utils import build_obb_from_aabb, descend_A, test_sphere_AABB, test_triangle_against_triangle, temp_SAT
+from collision_detection.collision_detection_utils import build_obb_from_aabb, descend_A, test_sphere_AABB, test_triangle_against_triangle
 import plotly.graph_objects as go
 import time
 
