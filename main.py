@@ -1,14 +1,21 @@
-from obj_functions import open_obj_file_plot, plot_two_obj_file, plot_all_AABB, plot_collisions, save_obj, calculate_box_AABB, build_triangles, find_centroids, calculate_box_sphere, calculate_box_OBB
+from obj_functions import random_tri_tri, plot_two_obj_file_old, plot_two_obj_file, plot_OBB_triangles, plot_collisions, plot_obj_file, plot_BVH_from_obj_with_ray, save_obj, plot_layer_OBB, open_obj_file, calculate_box_AABB, build_triangles, find_centroids, calculate_box_sphere, calculate_box_OBB, calculate_box_sphere_ritter
+from ray_intersection.ray_intersection_utils import plot_OBB_ray
 from bvh import BVHNode
 from triangle import Triangle
 import statistics
+import sys
 from ray_intersection.ray_intersection import ray_intersect
+from ray_intersection.ray_intersection_AABB import plot_BVH_aabb_from_obj_with_ray
 import logging
 from collision_detection.collision_detection import BVH_collision_detection
+from collision_detection.collision_detection_AABB import plot_triangles_in_aabb
 import plotly.graph_objects as go
 import numpy as np
 import tracemalloc
 import time
+import os
+import cython
+from memory_profiler import profile
 
 #vertices coordiantes
 verticesX = []
@@ -28,8 +35,15 @@ verticesK = []
 triangles = []
 centroids = []
 
-def begin(verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK):
+def begin(filename):
     """Open .obj file, build triangles and centroids"""
+
+    script_dir = os.path.dirname(__file__) #<-- absolute dir the script is in
+    rel_path = f"obj/examples/{filename}.obj"
+    abs_file_path = os.path.join(script_dir, rel_path)
+
+    verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK = open_obj_file(abs_file_path)
+
     triangles = build_triangles(verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK)
     centroids = find_centroids(verticesI, triangles)
 
@@ -43,17 +57,13 @@ def begin(verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK):
         
     return obj_list
 
-def build(node_list, bbox_type, verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK):
+def build(node_list, bbox_type, filename):
     """First iteration of the recursion, creation of the root node"""
     
     logging.debug("build function")
 
-    obj_list_copy = begin(verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK)
+    obj_list_copy = begin(filename)
     
-    time_1 = time.time()
-    logging.info(f"time: {time_1}")
-    tracemalloc.reset_peak()
-
     logging.debug(f"obj_list_copy: {obj_list_copy}")
 
     root = BVHNode(obj_list_copy)
@@ -178,7 +188,10 @@ def build_recursive(node, depth, node_list, bbox_type):
             logging.debug(f"axis_median: {axis_median}")
 
         logging.debug(f"Median split? {median_split}")
-
+        
+        # Calculate bounding boxes of left and right sides
+        obj_list_node_sorted = []   
+        
         if max_len_axis == "x":
             obj_list_node_sorted = sorted(obj_list_node, key=lambda triangle: triangle.centroid[0])
         elif max_len_axis == "y":
@@ -241,50 +254,18 @@ def main():
 
     bbox_type_A = input("Box type: aabb / sphere / obb: ")
     filename_A = input("Choose obj file: bear / boat / cow / pumpkin / rabbit / teapot: ")
-    test_type = input("Ray intersect [a] or collision detection [b] or only BVH creation [c]?: ")    
+    test_type = input("Ray intersect [a] or collision detection [b]?: ")    
     filename_B = None
     bbox_type_B = None
 
     node_list_A = []
     node_list_B = []
-    
-    right_position = False
-    x_axis = 0
-    y_axis = 0
-    z_axis = 0
-    rot_x_axis = 0
-    rot_y_axis = 0
-    rot_z_axis = 0
 
-    verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK = open_obj_file_plot(filename_A, x_axis, y_axis, z_axis, rot_x_axis, rot_y_axis, rot_z_axis)
-
-    while not right_position:
-        position = input("Do you want to move object? [y/n]")
-        if position == 'y':
-            x_axis = float(input("Move in x axis:"))
-            y_axis = float(input("Move in y axis:"))
-            z_axis = float(input("Move in z axis:"))
-            rot_x_axis = float(input("Rotate in x axis:"))
-            rot_y_axis = float(input("Rotate in y axis:"))
-            rot_z_axis = float(input("Rotate in z axis:"))
-            verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK = open_obj_file_plot(filename_A, x_axis, y_axis, z_axis, rot_x_axis, rot_y_axis, rot_z_axis)
-        elif position == 'n':
-            right_position = True
-
-    start_time = time.time()
-    tracemalloc.start()
-    node_list_A = build(node_list_A, bbox_type_A, verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK)
-    logging.info(f"tracemalloc.get_traced_memory(): {tracemalloc.get_traced_memory()}")
-    tracemalloc.stop()
-    stop_time = time.time()
-    logging.info(f"time of stop_time: {stop_time}")
-    logging.info(f"time of execution: {stop_time - start_time}")
-
-    logging.debug(f"len of node_list_A : {len(node_list_A)}")
+    node_list_A = build(node_list_A, bbox_type_A, filename_A)
 
     ray_origin = [1.223, -2.78, 10]
     ray_dest = [-3, 5, -8]
-
+    
     if test_type == 'b':
         bbox_type_B = input("Box type: aabb / sphere / obb: ")
         filename_B = input("Choose the second obj file: bear / boat / cow / pumpkin / rabbit / teapot: ")
@@ -295,25 +276,23 @@ def main():
         else:
             logging.debug("The end without intersection")
     elif test_type == 'b':
+        start_time = time.time()
+        tracemalloc.start()
         collisions = BVH_collision_detection(node_list_A, node_list_B, bbox_type_A, bbox_type_B)
-        fig = plot_two_obj_file(f"{filename_A}.obj.txt", f"{filename_B}.obj.txt")
+        logging.info(f"tracemalloc.get_traced_memory(): {tracemalloc.get_traced_memory()}")
+        tracemalloc.stop()
+        stop_time = time.time()
+        logging.info(f"time of stop_time: {stop_time}")
+        logging.info(f"time of execution: {stop_time - start_time}")
+        logging.info(f"number of collisions: {len(collisions)}")
+        fig = plot_two_obj_file_old(filename_A, filename_B)
         fig = plot_collisions(collisions, fig, bbox_type_A, bbox_type_B)
         fig.show()
-    else:
-        if bbox_type_A == "aabb":
-            filename = save_obj(node_list_A, 0)
-            plot_all_AABB(filename)
-        elif bbox_type_A == "sphere":
-            logging.debug("Plot all spheres")
-        elif bbox_type_A == "obb":
-            logging.debug("Plot all obb")
         
 if __name__ == "__main__":
 
-    # filemode a/w
-    logging.basicConfig(filename='app.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s', level=logging.DEBUG)
+    logging.basicConfig(filename='app.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 
     main()
     
-
 

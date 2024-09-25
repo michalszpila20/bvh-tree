@@ -3,13 +3,13 @@ import numpy as np
 import math
 import sys
 
-def test_triangle_against_triangle(aabb_a_temp, aabb_b_temp, collisions):
+def test_triangle_against_triangle(aabb_a_temp, aabb_b_temp):
 
     triangles_a = aabb_a_temp.triangles
     triangles_b = aabb_b_temp.triangles
     logging.debug(f"size of triangles_a: {len(triangles_a)}")
     logging.debug(f"size of triangles_b: {len(triangles_b)}")
-    tri_collisions = collisions
+    tri_collisions = []
 
     logging.debug(f"triangles_a: {triangles_a}")
 
@@ -21,7 +21,8 @@ def test_triangle_against_triangle(aabb_a_temp, aabb_b_temp, collisions):
             logging.debug(f"triangle_intersect: {triangle_intersect}")
             if triangle_intersect:
                 tri_collisions.append([triangle_a, triangle_b])
-    
+                logging.debug(f"appedned tri_collisions: {tri_collisions}")
+
     return tri_collisions
 
 def triangles_intersection(triangle_a, triangle_b):
@@ -88,6 +89,10 @@ def descend_larger_method(tree_a, tree_b, index_a, index_b):
 def descend_A(tree_a, index_a):
 
     return not tree_a[index_a].is_leaf()
+
+def descend_A_iter(aabb_a_temp):
+
+    return not aabb_a_temp.is_leaf()
 
 def cross_product(a, b):
     return np.array([a[1]*b[2] - a[2]*b[1],
