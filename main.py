@@ -14,8 +14,6 @@ import numpy as np
 import tracemalloc
 import time
 import os
-import cython
-from memory_profiler import profile
 
 #vertices coordiantes
 verticesX = []
@@ -290,7 +288,7 @@ def main():
         
 if __name__ == "__main__":
 
-    logging.basicConfig(filename='app.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
+    logging.basicConfig(filename='app.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s', level=logging.DEBUG)
 
     main()
     

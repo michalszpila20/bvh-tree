@@ -1,7 +1,7 @@
 import logging
 import time
 import numpy as np
-from collision_detection.collision_detection_utils import closest_pt_point_obb, test_triangle_against_triangle, descend_A, test_sphere_AABB
+from collision_detection.collision_detection_utils import closest_pt_point_obb, test_triangle_against_triangle, descend_A, test_sphere_AABB, descend_A_iter
 import itertools
 import plotly.graph_objects as go
 
@@ -131,12 +131,65 @@ def BVH_collision_sphere(tree_a, tree_b, index_a, index_b, bbox_type_B, collisio
     
     return collisions
 
+def BVH_collision_sphere_iterative(tree_a, tree_b, bbox_type_B):
+    logging.debug("iterative BVH traversal")
+
+    stack = []
+    collisions = []
+
+    aabb_a_temp = tree_a[0]
+    aabb_b_temp = tree_b[0]    
+
+    stack.append((aabb_a_temp, aabb_b_temp))
+
+    while stack:
+
+        logging.debug(f"stack before pop: {stack}")
+        aabb_a_temp, aabb_b_temp = stack.pop()
+        logging.debug(f"stack after pop: {stack}")
+
+        if bbox_type_B == "aabb":
+            if not test_sphere_AABB(aabb_a_temp.get_bbox(), aabb_b_temp): continue
+        elif bbox_type_B == "sphere":
+            if not test_sphere_sphere(aabb_a_temp, aabb_b_temp): continue
+        elif bbox_type_B == "obb":
+            result, q = test_sphere_obb(aabb_a_temp, aabb_b_temp)
+            if not result: continue
+
+        if aabb_a_temp.is_leaf() and aabb_b_temp.is_leaf():
+            logging.debug("Checking collisions on objects level.")
+            tri_collisions = test_triangle_against_triangle(aabb_a_temp, aabb_b_temp)
+            logging.debug(f"tri_collisions: {tri_collisions}")
+            if not len(tri_collisions) == 0:
+                logging.debug(f"tri_collisions: {len(tri_collisions)}")
+                collisions.extend(tri_collisions)
+                
+                logging.debug(f"collisions: {len(collisions)}")
+                logging.debug(f"len collisions: {len(collisions)}")
+        else:
+            if descend_A_iter(aabb_a_temp):
+                logging.debug("Descend A")
+                stack.append((aabb_a_temp.right, aabb_b_temp))
+                stack.append((aabb_a_temp.left, aabb_b_temp))
+                continue
+                
+            else:
+                logging.debug("Descend B")
+                stack.append((aabb_a_temp, aabb_b_temp.right))
+                stack.append((aabb_a_temp, aabb_b_temp.left))
+                continue
+
+    logging.debug(f"Collisions before exit: {collisions}")
+
+    return collisions
+
 def collision_detection_sphere(node_list_A, node_list_B, bbox_type_B):
     logging.debug("collision_detection_sphere")
 
     collisions = []
 
-    collisions = BVH_collision_sphere(node_list_A, node_list_B, 0, 0, bbox_type_B, collisions)
+    # collisions = BVH_collision_sphere(node_list_A, node_list_B, 0, 0, bbox_type_B, collisions)
+    collisions = BVH_collision_sphere_iterative(node_list_A, node_list_B, bbox_type_B)
 
     logging.debug(f"collisions: {collisions}")
     logging.debug(f"number of collisions: {len(collisions)}")

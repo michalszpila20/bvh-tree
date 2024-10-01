@@ -123,7 +123,7 @@ def BVH_collision_aabb_recusion(tree_a, tree_b, index_a, index_b, bbox_type_B, c
     
     return collisions
 
-def BVH_collision_aabb_iterative(tree_a, tree_b):
+def BVH_collision_aabb_iterative(tree_a, tree_b, bbox_type_B):
     logging.debug("iterative BVH traversal")
 
     stack = []
@@ -140,12 +140,18 @@ def BVH_collision_aabb_iterative(tree_a, tree_b):
         aabb_a_temp, aabb_b_temp = stack.pop()
         logging.debug(f"stack after pop: {stack}")
 
-        logging.debug(f"AABB A mins: {aabb_a_temp.get_bbox().mins}, maxs: {aabb_a_temp.get_bbox().maxs}")
-        logging.debug(f"AABB B mins: {aabb_b_temp.get_bbox().mins}, maxs: {aabb_b_temp.get_bbox().maxs}")
+        if bbox_type_B == "aabb":
+            if not test_AABB_AABB(aabb_a_temp, aabb_b_temp): continue
+        elif bbox_type_B == "sphere":
+            if not test_sphere_AABB(aabb_b_temp.get_bbox(), aabb_a_temp): continue
+        elif bbox_type_B == "obb":
+            logging.debug("Add aabb - obb intersection test")
+            corners, center, diff, rotation = build_obb_from_aabb(aabb_a_temp)
+            obb_from_aabb = OBB(corners, center, diff, rotation)
+            temp_node = BVHNode(None)
+            temp_node.set_bbox(obb_from_aabb)
+            if not test_obb_obb(temp_node, aabb_b_temp): continue
 
-        logging.debug(f"test_AABB_AABB(aabb_a_temp, aabb_b_temp): {test_AABB_AABB(aabb_a_temp, aabb_b_temp)}")
-
-        if not test_AABB_AABB(aabb_a_temp, aabb_b_temp): continue
         if aabb_a_temp.is_leaf() and aabb_b_temp.is_leaf():
             logging.debug("Checking collisions on objects level.")
             tri_collisions = test_triangle_against_triangle(aabb_a_temp, aabb_b_temp)
@@ -173,10 +179,6 @@ def BVH_collision_aabb_iterative(tree_a, tree_b):
 
     return collisions
 
-def descend_A_iter(aabb_a_temp):
-
-    return not aabb_a_temp.is_leaf()
-
 def collision_detection_AABB(node_list_A, node_list_B, bbox_type_B):
 
     logging.debug("collision_detection for AABB")
@@ -184,7 +186,7 @@ def collision_detection_AABB(node_list_A, node_list_B, bbox_type_B):
     collisions = []
 
     # collisions = BVH_collision_aabb_recusion(node_list_A, node_list_B, 0, 0, bbox_type_B, collisions)
-    collisions = BVH_collision_aabb_iterative(node_list_A, node_list_B)
+    collisions = BVH_collision_aabb_iterative(node_list_A, node_list_B, bbox_type_B)
     logging.debug(f"collisions: {collisions}")
     logging.debug(f"size of collisions: {len(collisions)}")
 

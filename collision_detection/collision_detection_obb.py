@@ -5,7 +5,7 @@ from OBB import OBB
 
 from bvh import BVHNode
 from collision_detection.collision_detection_sphere import test_sphere_obb
-from collision_detection.collision_detection_utils import test_triangle_against_triangle, descend_A, build_obb_from_aabb
+from collision_detection.collision_detection_utils import test_triangle_against_triangle, descend_A, build_obb_from_aabb, descend_A_iter
 from obj_functions import plot_2OBB
 import time
 
@@ -185,6 +185,64 @@ def BVH_collision_obb(tree_a, tree_b, index_a, index_b, bbox_type_B, collisions)
     
     return collisions
 
+def BVH_collision_obb_iterative(tree_a, tree_b, bbox_type_B):
+    logging.debug("iterative BVH traversal")
+
+    stack = []
+    collisions = []
+
+    aabb_a_temp = tree_a[0]
+    aabb_b_temp = tree_b[0]    
+
+    stack.append((aabb_a_temp, aabb_b_temp))
+
+    while stack:
+
+        logging.debug(f"stack before pop: {stack}")
+        aabb_a_temp, aabb_b_temp = stack.pop()
+        logging.debug(f"stack after pop: {stack}")
+
+        if bbox_type_B == "aabb":
+            logging.debug("Add aabb - obb intersection test")
+            corners, center, diff, rotation = build_obb_from_aabb(aabb_b_temp)
+            obb_from_aabb = OBB(corners, center, diff, rotation)
+            temp_node = BVHNode(None)
+            temp_node.set_bbox(obb_from_aabb)
+            if not test_obb_obb(temp_node, aabb_a_temp): continue
+        elif bbox_type_B == "sphere":
+            result, q = test_sphere_obb(aabb_b_temp, aabb_a_temp)
+            if not result: continue
+        elif bbox_type_B == "obb":
+            if not test_obb_obb(aabb_a_temp, aabb_b_temp): continue
+
+        if aabb_a_temp.is_leaf() and aabb_b_temp.is_leaf():
+            logging.debug("Checking collisions on objects level.")
+            tri_collisions = test_triangle_against_triangle(aabb_a_temp, aabb_b_temp)
+            logging.debug(f"tri_collisions: {tri_collisions}")
+            if not len(tri_collisions) == 0:
+                logging.debug(f"tri_collisions: {len(tri_collisions)}")
+                collisions.extend(tri_collisions)
+                
+                logging.debug(f"collisions: {len(collisions)}")
+                logging.debug(f"len collisions: {len(collisions)}")
+        else:
+            if descend_A_iter(aabb_a_temp):
+                logging.debug("Descend A")
+                stack.append((aabb_a_temp.right, aabb_b_temp))
+                stack.append((aabb_a_temp.left, aabb_b_temp))
+                continue
+                
+            else:
+                logging.debug("Descend B")
+                stack.append((aabb_a_temp, aabb_b_temp.right))
+                stack.append((aabb_a_temp, aabb_b_temp.left))
+                continue
+
+    logging.debug(f"Collisions before exit: {collisions}")
+
+    return collisions
+
+
 def collision_detection_obb(node_list_A, node_list_B, bbox_type_B):
     
     logging.debug("collision_detection_obb")
@@ -205,7 +263,8 @@ def collision_detection_obb(node_list_A, node_list_B, bbox_type_B):
 
     logging.debug(f"leaves_a: {len(leaves_a)}, leaves_b: {len(leaves_b)}")
 
-    collisions = BVH_collision_obb(node_list_A, node_list_B, 0, 0, bbox_type_B, collisions)
+    # collisions = BVH_collision_obb(node_list_A, node_list_B, 0, 0, bbox_type_B, collisions)
+    collisions = BVH_collision_obb_iterative(node_list_A, node_list_B, bbox_type_B)
     logging.debug(f"collisions: {collisions}")
     logging.debug(f"size of collisions: {len(collisions)}")
 
