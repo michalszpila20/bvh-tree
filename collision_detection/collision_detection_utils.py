@@ -1,7 +1,6 @@
 import logging
 import numpy as np
-import math
-import sys
+from CGAL.CGAL_Kernel import Point_3, Triangle_3, do_intersect
 
 def test_triangle_against_triangle(aabb_a_temp, aabb_b_temp):
 
@@ -17,7 +16,7 @@ def test_triangle_against_triangle(aabb_a_temp, aabb_b_temp):
         for triangle_b in triangles_b:
             logging.debug(f"triangle_a: {triangle_a}")
         
-            triangle_intersect = triangles_intersection(triangle_a, triangle_b)
+            triangle_intersect = triangles_intersection_CGAL(triangle_a, triangle_b)
             logging.debug(f"triangle_intersect: {triangle_intersect}")
             if triangle_intersect:
                 tri_collisions.append([triangle_a, triangle_b])
@@ -25,60 +24,25 @@ def test_triangle_against_triangle(aabb_a_temp, aabb_b_temp):
 
     return tri_collisions
 
-def triangles_intersection(triangle_a, triangle_b):
+def triangles_intersection_CGAL(triangle_a, triangle_b):
 
-    # Unpack vertices of triangles
-    logging.debug(f"triangle_a in function: {triangle_a}")
+    a = Point_3(triangle_a.vertices[0][0], triangle_a.vertices[0][1], triangle_a.vertices[0][2])
+    b = Point_3(triangle_a.vertices[1][0], triangle_a.vertices[1][1], triangle_a.vertices[1][2])
+    c = Point_3(triangle_a.vertices[2][0], triangle_a.vertices[2][1], triangle_a.vertices[2][2])
 
-    V0 = np.array([triangle_a.vertices[0][0], triangle_a.vertices[0][1], triangle_a.vertices[0][2]])
-    V1 = np.array([triangle_a.vertices[1][0], triangle_a.vertices[1][1], triangle_a.vertices[1][2]])
-    V2 = np.array([triangle_a.vertices[2][0], triangle_a.vertices[2][1], triangle_a.vertices[2][2]])
-     
-    #V0, V1, V2 = triangle_a
-    #U0, U1, U2 = triangle_b
+    p = Point_3(triangle_b.vertices[0][0], triangle_b.vertices[0][1], triangle_b.vertices[0][2])
+    q = Point_3(triangle_b.vertices[1][0], triangle_b.vertices[1][1], triangle_b.vertices[1][2])
+    k = Point_3(triangle_b.vertices[2][0], triangle_b.vertices[2][1], triangle_b.vertices[2][2])
 
-    U0 = np.array([triangle_b.vertices[0][0], triangle_b.vertices[0][1], triangle_b.vertices[0][2]])
-    U1 = np.array([triangle_b.vertices[1][0], triangle_b.vertices[1][1], triangle_b.vertices[1][2]])
-    U2 = np.array([triangle_b.vertices[2][0], triangle_b.vertices[2][1], triangle_b.vertices[2][2]])
+    triangle1 = Triangle_3(a, b, c)
+    triangle2 = Triangle_3(p, q, k)
 
-    logging.debug(f"V0: {V0}")
-    logging.debug(f"V1: {V1}")
-    logging.debug(f"V2: {V2}")
-
-    # Edge vectors for tri1
-    E1 = subtract(V1, V0)
-    E2 = subtract(V2, V0)
-    E3 = subtract(V2, V1)
-
-    # Edge vectors for tri2
-    F1 = subtract(U1, U0)
-    F2 = subtract(U2, U0)
-    F3 = subtract(U2, U1)
-
-    # Axes to test
-    axes = [
-        cross_product(E1, E2),   # Normal of tri1
-        cross_product(F1, F2),   # Normal of tri2
-        cross_product(E1, F1),
-        cross_product(E1, F2),
-        cross_product(E1, F3),
-        cross_product(E2, F1),
-        cross_product(E2, F2),
-        cross_product(E2, F3),
-        cross_product(E3, F1),
-        cross_product(E3, F2),
-        cross_product(E3, F3)
-    ]
-
-    for axis in axes:
-        if np.linalg.norm(axis) < sys.float_info.epsilon:
-            continue
-        min1, max1 = project(triangle_a, axis)
-        min2, max2 = project(triangle_b, axis)
-        if not overlap(min1, max1, min2, max2):
-            return False
-
-    return True
+    result = do_intersect(triangle1, triangle2)
+    logging.debug(f"Intersection result: {result}")
+    if result:
+        return True
+    else:
+        return False
 
 def descend_larger_method(tree_a, tree_b, index_a, index_b):
 
@@ -93,24 +57,6 @@ def descend_A(tree_a, index_a):
 def descend_A_iter(aabb_a_temp):
 
     return not aabb_a_temp.is_leaf()
-
-def cross_product(a, b):
-    return np.array([a[1]*b[2] - a[2]*b[1],
-                     a[2]*b[0] - a[0]*b[2],
-                     a[0]*b[1] - a[1]*b[0]])
-
-def dot_product(a, b):
-    return np.dot(a, b)
-
-def subtract(a, b):
-    return np.array([a[0] - b[0], a[1] - b[1], a[2] - b[2]])
-
-def project(triangle, axis):
-    dots = [dot_product(vertex, axis) for vertex in triangle.vertices]
-    return min(dots), max(dots)
-
-def overlap(min1, max1, min2, max2):
-    return not (max1 < min2 or max2 < min1)
 
 def build_obb_from_aabb(aabb_b_temp):
 

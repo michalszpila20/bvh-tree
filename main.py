@@ -1,4 +1,4 @@
-from obj_functions import random_tri_tri, plot_two_obj_file_old, plot_two_obj_file, plot_OBB_triangles, plot_collisions, plot_obj_file, plot_BVH_from_obj_with_ray, save_obj, plot_layer_OBB, open_obj_file, calculate_box_AABB, build_triangles, find_centroids, calculate_box_sphere, calculate_box_OBB, calculate_box_sphere_ritter
+from obj_functions import plot_two_obj_file, plot_OBB_triangles, plot_collisions, plot_obj_file, plot_BVH_from_obj_with_ray, save_obj, plot_layer_OBB, open_obj_file, calculate_box_AABB, build_triangles, find_centroids, calculate_box_sphere, calculate_box_OBB, calculate_box_sphere_ritter
 from ray_intersection.ray_intersection_utils import plot_OBB_ray
 from bvh import BVHNode
 from triangle import Triangle
@@ -285,9 +285,8 @@ def main():
         logging.info(f"time of stop_time: {stop_time}")
         logging.info(f"time of execution: {stop_time - start_time}")
         logging.info(f"number of collisions: {len(collisions)}")
-        fig = plot_two_obj_file_old(filename_A, filename_B)
-        fig = plot_collisions(collisions, fig, bbox_type_A, bbox_type_B)
-        fig.show()
+        # fig = plot_collisions(collisions, fig, bbox_type_A, bbox_type_B)
+        # fig.show()
         
 if __name__ == "__main__":
 

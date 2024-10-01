@@ -2,13 +2,9 @@ import logging
 from OBB import OBB
 from bvh import BVHNode
 from collision_detection.collision_detection_obb import test_obb_obb
-from obj_functions import plot_2OBB, save_obj, plot_two_obj_file
 import numpy as np
-import math
 from collision_detection.collision_detection_utils import build_obb_from_aabb, descend_A, test_sphere_AABB, test_triangle_against_triangle, descend_A_iter
 import plotly.graph_objects as go
-import time
-from memory_profiler import profile
 
 def test_AABB_AABB(aabb_a, aabb_b):
 
