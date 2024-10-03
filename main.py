@@ -1,4 +1,4 @@
-from obj_functions import plot_two_obj_file, plot_OBB_triangles, plot_collisions, plot_obj_file, plot_BVH_from_obj_with_ray, save_obj, plot_layer_OBB, open_obj_file, calculate_box_AABB, build_triangles, find_centroids, calculate_box_sphere, calculate_box_OBB, calculate_box_sphere_ritter
+from obj_functions import rotate_move_obj_files, move_obj, rotate_obj, plot_two_obj_file, plot_OBB_triangles, plot_collisions, plot_obj_file, plot_BVH_from_obj_with_ray, save_obj, plot_layer_OBB, open_obj_file, calculate_box_AABB, build_triangles, find_centroids, calculate_box_sphere, calculate_box_OBB, calculate_box_sphere_ritter
 from ray_intersection.ray_intersection_utils import plot_OBB_ray
 from bvh import BVHNode
 from triangle import Triangle
@@ -33,16 +33,19 @@ verticesK = []
 triangles = []
 centroids = []
 
-def begin(filename):
+def begin(filename, x_axis, y_axis, z_axis, rot_x_axis, rot_y_axis, rot_z_axis):
     """Open .obj file, build triangles and centroids"""
 
-    script_dir = os.path.dirname(__file__) #<-- absolute dir the script is in
-    rel_path = f"obj/examples/{filename}.obj"
-    abs_file_path = os.path.join(script_dir, rel_path)
+    # script_dir = os.path.dirname(__file__) #<-- absolute dir the script is in
+    # rel_path = f"obj/examples/{filename}.obj"
+    # abs_file_path = os.path.join(script_dir, rel_path)
 
-    verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK = open_obj_file(abs_file_path)
+    verticesX_rotated, verticesY_rotated, verticesZ_rotated, verticesI, verticesJ, verticesK = rotate_obj(filename, rot_x_axis, rot_y_axis, rot_z_axis)
+    verticesX_rotated_moved_A, verticesY_rotated_moved_A, verticesZ_rotated_moved_A = move_obj(x_axis, y_axis, z_axis, verticesX_rotated,
+                                                                                                verticesY_rotated, verticesZ_rotated)
+    # verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK = open_obj_file(abs_file_path)
 
-    triangles = build_triangles(verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK)
+    triangles = build_triangles(verticesX_rotated_moved_A, verticesY_rotated_moved_A, verticesZ_rotated_moved_A, verticesI, verticesJ, verticesK)
     centroids = find_centroids(verticesI, triangles)
 
     obj_list = []
@@ -55,12 +58,12 @@ def begin(filename):
         
     return obj_list
 
-def build(node_list, bbox_type, filename):
+def build(node_list, bbox_type, filename, x_axis, y_axis, z_axis, rot_x_axis, rot_y_axis, rot_z_axis):
     """First iteration of the recursion, creation of the root node"""
     
     logging.debug("build function")
 
-    obj_list_copy = begin(filename)
+    obj_list_copy = begin(filename, x_axis, y_axis, z_axis, rot_x_axis, rot_y_axis, rot_z_axis)
     
     logging.debug(f"obj_list_copy: {obj_list_copy}")
 
@@ -250,24 +253,72 @@ def build_recursive(node, depth, node_list, bbox_type):
         
 def main():
 
-    bbox_type_A = input("Box type: aabb / sphere / obb: ")
-    filename_A = input("Choose obj file: bear / boat / cow / pumpkin / rabbit / teapot: ")
-    test_type = input("Ray intersect [a] or collision detection [b]?: ")    
     filename_B = None
     bbox_type_B = None
-
     node_list_A = []
     node_list_B = []
 
-    node_list_A = build(node_list_A, bbox_type_A, filename_A)
+    bbox_type_A = input("Box type: aabb / sphere / obb: ")
+    filename_A = input("Choose obj file: bear / boat / cow / pumpkin / rabbit / teapot: ")
+    test_type = input("Ray intersect [a] or collision detection [b]?: ")
+    if test_type == 'b':
+        bbox_type_B = input("Box type: aabb / sphere / obb: ")
+        filename_B = input("Choose the second obj file: bear / boat / cow / pumpkin / rabbit / teapot: ")
+
+    right_position = False
+    x_axis_A = 0
+    x_axis_B = 0
+    y_axis_A = 0
+    y_axis_B = 0
+    z_axis_A = 0
+    z_axis_B = 0
+    rot_x_axis_A = 0
+    rot_x_axis_B = 0
+    rot_y_axis_A = 0
+    rot_y_axis_B = 0
+    rot_z_axis_A = 0
+    rot_z_axis_B = 0
+
+    while not right_position:
+        rotate_move_obj_files(filename_A, 0, 0, 0, 0, 0, 0,
+                          filename_B, 0, 0, 0, 0, 0, 0)
+        position = input("Do you want to move object? [y/n]")
+        if position == 'y':
+            print("Object A:")
+            x_axis_A = float(input("Move in x axis:"))
+            y_axis_A = float(input("Move in y axis:"))
+            z_axis_A = float(input("Move in z axis:"))
+            rot_x_axis_A = float(input("Rotate in x axis:"))
+            rot_y_axis_A = float(input("Rotate in y axis:"))
+            rot_z_axis_A = float(input("Rotate in z axis:"))
+
+            print("=========================================")
+            print("Object B:")
+            x_axis_B = float(input("Move in x axis:"))
+            y_axis_B = float(input("Move in y axis:"))
+            z_axis_B = float(input("Move in z axis:"))
+            rot_x_axis_B = float(input("Rotate in x axis:"))
+            rot_y_axis_B = float(input("Rotate in y axis:"))
+            rot_z_axis_B = float(input("Rotate in z axis:"))
+            rotate_move_obj_files(filename_A, x_axis_A, y_axis_A, z_axis_A, rot_x_axis_A, rot_y_axis_A, rot_z_axis_A,
+                          filename_B, x_axis_B, y_axis_B, z_axis_B, rot_x_axis_B, rot_y_axis_B, rot_z_axis_B)
+        elif position == 'n':
+            right_position = True
+
+    logging.debug(f"x_axis_A, y_axis_A, z_axis_A: {x_axis_A}, {y_axis_A}, {z_axis_A}")
+    logging.debug(f"rot_x_axis_A, rot_y_axis_A, rot_z_axis_A: {rot_x_axis_A}, {rot_y_axis_A}, {rot_z_axis_A}")
+
+    logging.debug(f"x_axis_B, y_axis_B, z_axis_B: {x_axis_B}, {y_axis_B}, {z_axis_B}")
+    logging.debug(f"rot_x_axis_B, rot_y_axis_B, rot_z_axis_B: {rot_x_axis_B}, {rot_y_axis_B}, {rot_z_axis_B}")
+
+    node_list_A = build(node_list_A, bbox_type_A, filename_A, x_axis_A, y_axis_A, z_axis_A, rot_x_axis_A, rot_y_axis_A, rot_z_axis_A)
+    
+    if test_type == 'b':
+        node_list_B = build(node_list_B, bbox_type_B, filename_B, x_axis_B, y_axis_B, z_axis_B, rot_x_axis_B, rot_y_axis_B, rot_z_axis_B) 
 
     ray_origin = [1.223, -2.78, 10]
     ray_dest = [-3, 5, -8]
     
-    if test_type == 'b':
-        bbox_type_B = input("Box type: aabb / sphere / obb: ")
-        filename_B = input("Choose the second obj file: bear / boat / cow / pumpkin / rabbit / teapot: ")
-        node_list_B = build(node_list_B, bbox_type_B, filename_B)
     if test_type == 'a':
         if ray_intersect(ray_origin, ray_dest, node_list_A, bbox_type_A):
             logging.debug("The end with intersection")
@@ -283,8 +334,6 @@ def main():
         logging.info(f"time of stop_time: {stop_time}")
         logging.info(f"time of execution: {stop_time - start_time}")
         logging.info(f"number of collisions: {len(collisions)}")
-        # fig = plot_collisions(collisions, fig, bbox_type_A, bbox_type_B)
-        # fig.show()
         
 if __name__ == "__main__":
 

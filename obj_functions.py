@@ -65,6 +65,38 @@ def plot_obj_file(verticesX, verticesY, verticesZ, verticesI, verticesJ, vertice
         )
     ])
 
+
+def plot_2obj_file(verticesX_rotated_moved_A, verticesY_rotated_moved_A, verticesZ_rotated_moved_A, verticesI_A, verticesJ_A, verticesK_A,
+                   verticesX_rotated_moved_B, verticesY_rotated_moved_B, verticesZ_rotated_moved_B, verticesI_B, verticesJ_B, verticesK_B):
+    fig = go.Figure(data=[
+    go.Mesh3d(
+        x=verticesX_rotated_moved_A,
+        y=verticesY_rotated_moved_A,
+        z=verticesZ_rotated_moved_A,
+            
+        color='blue',
+        opacity=0.1,
+            
+        i=verticesI_A[0:-1],
+        j=verticesJ_A[0:-1],
+        k=verticesK_A[0:-1]
+        )
+    ])
+
+    fig.add_trace(go.Mesh3d(
+        x=verticesX_rotated_moved_B,
+        y=verticesY_rotated_moved_B,
+        z=verticesZ_rotated_moved_B,
+            
+        color='red',
+        opacity=0.1,
+            
+        i=verticesI_B[0:-1],
+        j=verticesJ_B[0:-1],
+        k=verticesK_B[0:-1]
+        )
+    )
+
     fig.show()
 
 def plot_two_obj_file(filename_A, filename_B):
@@ -812,9 +844,7 @@ def plot_all_AABB(filename):
 
     plot_BVH_from_obj(filename)
 
-def open_obj_file_plot(filename, x_axis, y_axis, z_axis, rot_x_axis, rot_y_axis, rot_z_axis):
-    
-    verticesX_rotated, verticesY_rotated, verticesZ_rotated, verticesI, verticesJ, verticesK = rotate_obj(filename, rot_x_axis, rot_y_axis, rot_z_axis)
+def move_obj(x_axis, y_axis, z_axis, verticesX_rotated, verticesY_rotated, verticesZ_rotated):
 
     verticesX_rotated_moved = []
     verticesY_rotated_moved = []
@@ -832,10 +862,19 @@ def open_obj_file_plot(filename, x_axis, y_axis, z_axis, rot_x_axis, rot_y_axis,
         vert_z += z_axis
         verticesZ_rotated_moved.append(vert_z)
 
-    plot_obj_file(verticesX_rotated_moved, verticesY_rotated_moved, verticesZ_rotated_moved, verticesI, verticesJ, verticesK)
-        
-    return verticesX_rotated_moved, verticesY_rotated_moved, verticesZ_rotated_moved, verticesI, verticesJ, verticesK
+    return verticesX_rotated_moved, verticesY_rotated_moved, verticesZ_rotated_moved
 
+def rotate_move_obj_files(filename_A, x_axis_A, y_axis_A, z_axis_A, rot_x_axis_A, rot_y_axis_A, rot_z_axis_A,
+                          filename_B, x_axis_B, y_axis_B, z_axis_B, rot_x_axis_B, rot_y_axis_B, rot_z_axis_B):
+    
+    verticesX_rotated_A, verticesY_rotated_A, verticesZ_rotated_A, verticesI_A, verticesJ_A, verticesK_A = rotate_obj(filename_A, rot_x_axis_A, rot_y_axis_A, rot_z_axis_A)
+    verticesX_rotated_moved_A, verticesY_rotated_moved_A, verticesZ_rotated_moved_A = move_obj(x_axis_A, y_axis_A, z_axis_A, verticesX_rotated_A, verticesY_rotated_A, verticesZ_rotated_A)    
+
+    verticesX_rotated_B, verticesY_rotated_B, verticesZ_rotated_B, verticesI_B, verticesJ_B, verticesK_B = rotate_obj(filename_B, rot_x_axis_B, rot_y_axis_B, rot_z_axis_B)
+    verticesX_rotated_moved_B, verticesY_rotated_moved_B, verticesZ_rotated_moved_B = move_obj(x_axis_B, y_axis_B, z_axis_B, verticesX_rotated_B, verticesY_rotated_B, verticesZ_rotated_B)
+
+    plot_2obj_file(verticesX_rotated_moved_A, verticesY_rotated_moved_A, verticesZ_rotated_moved_A, verticesI_A, verticesJ_A, verticesK_A, verticesX_rotated_moved_B, verticesY_rotated_moved_B, verticesZ_rotated_moved_B, verticesI_B, verticesJ_B, verticesK_B)
+    
 def rotate_obj(filename, rot_x_axis, rot_y_axis, rot_z_axis):
 
     logging.debug("rotate")
