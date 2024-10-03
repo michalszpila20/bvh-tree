@@ -56,8 +56,8 @@ def plot_obj_file(verticesX, verticesY, verticesZ, verticesI, verticesJ, vertice
         y=verticesY,
         z=verticesZ,
             
-        color='blue',
-        opacity=0.1,
+        color='#a3a3a3',
+        opacity=0.05,
             
         i=verticesI[0:-1],
         j=verticesJ[0:-1],
@@ -65,6 +65,7 @@ def plot_obj_file(verticesX, verticesY, verticesZ, verticesI, verticesJ, vertice
         )
     ])
 
+    fig.show()
 
 def plot_2obj_file(verticesX_rotated_moved_A, verticesY_rotated_moved_A, verticesZ_rotated_moved_A, verticesI_A, verticesJ_A, verticesK_A,
                    verticesX_rotated_moved_B, verticesY_rotated_moved_B, verticesZ_rotated_moved_B, verticesI_B, verticesJ_B, verticesK_B):
@@ -97,7 +98,8 @@ def plot_2obj_file(verticesX_rotated_moved_A, verticesY_rotated_moved_A, vertice
         )
     )
 
-    fig.show()
+    # fig.show()
+    return fig
 
 def plot_two_obj_file(filename_A, filename_B):
     
@@ -135,7 +137,7 @@ def plot_two_obj_file(filename_A, filename_B):
 
     return fig
 
-def calculate_box_AABB(obj_list_copy):
+def calculate_box_AABB(obj_list_copy, test_type):
 
     vertices_x = []
     vertices_y = []
@@ -158,7 +160,26 @@ def calculate_box_AABB(obj_list_copy):
     min_s = [min(vertices_x), min(vertices_y), min(vertices_z)]
     max_s = [max(vertices_x), max(vertices_y), max(vertices_z)]
 
-    world_box = AABB(min_s, max_s)
+    if test_type == "b":
+
+        half_extents = (np.array(max_s) - np.array(min_s)) / 2
+        center = min_s + half_extents
+        diff = half_extents
+
+        corners = np.array([center + [-diff[0], -diff[1], -diff[2]],
+                            center + [diff[0], diff[1], diff[2]],
+                            center + [diff[0], -diff[1], diff[2]],
+                            center + [diff[0], -diff[1], -diff[2]],
+                            center + [diff[0], diff[1], -diff[2]],
+                            center + [-diff[0], diff[1], diff[2]],
+                            center + [-diff[0], -diff[1], diff[2]],
+                            center + [-diff[0], diff[1], -diff[2]]])
+        
+        rotation = np.eye(3)
+
+        world_box = AABB(min_s, max_s, corners, center, half_extents, rotation)
+    else:
+        world_box = AABB(min_s, max_s)
 
     return world_box
 
@@ -269,6 +290,10 @@ def calculate_box_sphere_ritter(obj_list_copy):
         base_sphere = adjust_sphere(base_sphere, points[i])
 
     logging.debug(f"base_sphere: {base_sphere.centre} , {base_sphere.radius}")
+
+    world_box = sphere(base_sphere.centre, base_sphere.radius)
+
+    return world_box
 
 def calculate_box_sphere(obj_list_copy):
 
@@ -447,7 +472,14 @@ def plot_bbox(bbox, objects, node_number, depth):
     fig1.show()
 
 
-def save_obj(node_list, number):
+def save_obj_aabb(node_list, number):
+
+    if os.path.exists(f"all_{number}.obj"):
+
+        file_size = os.stat(f"all_{number}.obj").st_size
+        
+        if not file_size == 0:
+            open(f"all_{number}.obj", 'w').close()
 
     node_list_depth = defaultdict(list)
 
@@ -480,7 +512,7 @@ def save_obj(node_list, number):
             j_list_layer = [i + (8 * val) for i in j_list]
             k_list_layer = [i + (8 * val) for i in k_list]
 
-            with open(f"all_{number}.obj", "w") as f:
+            with open(f"all_{number}.obj", "a") as f:
                 for i in range(len(x)):
                     f.write("v {} {} {}\n".format(x[i], y[i], z[i]))
                 for i in range(12):
@@ -488,6 +520,92 @@ def save_obj(node_list, number):
                 val += 1
     
     return f"all_{number}.obj"
+
+def save_obj_obb(node_list, number):
+
+    if os.path.exists(f"all_obb_{number}.obj"):
+
+        file_size = os.stat(f"all_obb_{number}.obj").st_size
+        
+        if not file_size == 0:
+            open(f"all_obb_{number}.obj", 'w').close()
+
+    node_list_depth = defaultdict(list)
+
+    for node in node_list:
+        node_list_depth[node.get_depth()].append(node.get_bbox())
+
+    val = 0
+
+    for depth in node_list_depth.values():
+
+        i_list = [8, 1, 1, 1, 5, 5, 7, 7, 5, 1, 4, 3]
+        j_list = [4, 5, 2, 3, 6, 7, 6, 3, 1, 2, 7, 4]
+        k_list = [1, 8, 3, 4, 7, 8, 2, 2, 6, 6, 8, 7]
+
+        for bbox in depth:
+
+            x = list(bbox.corners[:, 0])
+            y = list(bbox.corners[:, 1])
+            z = list(bbox.corners[:, 2])
+
+            i_list_layer = [i + (8 * val) for i in i_list]
+            j_list_layer = [i + (8 * val) for i in j_list]
+            k_list_layer = [i + (8 * val) for i in k_list]
+
+            with open(f"all_obb_{number}.obj", "a") as f:
+                for i in range(len(x)):
+                    f.write("v {} {} {}\n".format(x[i], y[i], z[i]))
+                for i in range(12):
+                    f.write("f {} {} {}\n".format(i_list_layer[i], j_list_layer[i], k_list_layer[i]))
+                val += 1
+    
+    return f"all_obb_{number}.obj"
+
+def save_obj_sphere(node_list, resolution, number):
+
+    if os.path.exists(f"all_sphere_{number}.obj"):
+
+        file_size = os.stat(f"all_sphere_{number}.obj").st_size
+        
+        if not file_size == 0:
+            open(f"all_sphere_{number}.obj", 'w').close()
+
+    vertices = []
+    faces = []
+    vertex_offset = 0
+
+    for node in node_list:
+        bbox = node.get_bbox()
+        x, y, z = bbox.centre
+        radius = bbox.radius
+
+        # Generate sphere vertices based on given center and radius
+        u, v = np.mgrid[0:2*np.pi:resolution*2j, 0:np.pi:resolution*1j]
+        X = (radius * np.cos(u) * np.sin(v) + x).flatten()
+        Y = (radius * np.sin(u) * np.sin(v) + y).flatten()
+        Z = (radius * np.cos(v) + z).flatten()
+
+        # Append vertices
+        for x, y, z in zip(X, Y, Z):
+            vertices.append(f"v {x} {y} {z}")
+
+        # Generate faces for the sphere mesh
+        num_vertices = len(X)
+        for i in range(num_vertices - resolution):
+            if (i + 1) % resolution != 0:  # Skip the seam
+                faces.append(f"f {vertex_offset + i + 1} {vertex_offset + i + 2} {vertex_offset + i + resolution + 2} {vertex_offset + i + resolution + 1}")
+
+        vertex_offset += num_vertices
+
+    # Write to .obj file
+    with open(f"all_sphere_{number}.obj", 'w') as f:
+        for vertex in vertices:
+            f.write(f"{vertex}\n")
+        for face in faces:
+            f.write(f"{face}\n")
+
+    return f"all_sphere_{number}.obj"
 
 def plot_BVH_from_obj(filename):
 
@@ -710,7 +828,7 @@ def plot_collisions(collisions, fig, bbox_type_A, bbox_type_B):
         fig.add_trace(go.Mesh3d(x=x1, y=y1, z=z1, alphahull=5, opacity=0.4, color='red', i=i1, j=j1, k=k1))
         fig.update_layout(title_text=f"Collision {bbox_type_A} against {bbox_type_B}, number of collisions: {collisions_len}")
     
-    return fig
+    fig.show()
 
 def plot_2OBB(obb_a, obb_b, result, aabb):
 
@@ -864,20 +982,24 @@ def move_obj(x_axis, y_axis, z_axis, verticesX_rotated, verticesY_rotated, verti
 
     return verticesX_rotated_moved, verticesY_rotated_moved, verticesZ_rotated_moved
 
-def rotate_move_obj_files(filename_A, x_axis_A, y_axis_A, z_axis_A, rot_x_axis_A, rot_y_axis_A, rot_z_axis_A,
-                          filename_B, x_axis_B, y_axis_B, z_axis_B, rot_x_axis_B, rot_y_axis_B, rot_z_axis_B):
+def rotate_move_obj_files(filename_A, x_axis_A, y_axis_A, z_axis_A, rot_x_axis_A, rot_y_axis_A, rot_z_axis_A, scale_A,
+                          filename_B, x_axis_B, y_axis_B, z_axis_B, rot_x_axis_B, rot_y_axis_B, rot_z_axis_B, scale_B):
     
-    verticesX_rotated_A, verticesY_rotated_A, verticesZ_rotated_A, verticesI_A, verticesJ_A, verticesK_A = rotate_obj(filename_A, rot_x_axis_A, rot_y_axis_A, rot_z_axis_A)
+    scaled_vert_x_A, scaled_vert_y_A, scaled_vert_z_A, verticesI_A, verticesJ_A, verticesK_A = scale_obj(filename_A, scale_A)
+    verticesX_rotated_A, verticesY_rotated_A, verticesZ_rotated_A = rotate_obj(scaled_vert_x_A, scaled_vert_y_A, scaled_vert_z_A, rot_x_axis_A, rot_y_axis_A, rot_z_axis_A)
     verticesX_rotated_moved_A, verticesY_rotated_moved_A, verticesZ_rotated_moved_A = move_obj(x_axis_A, y_axis_A, z_axis_A, verticesX_rotated_A, verticesY_rotated_A, verticesZ_rotated_A)    
 
-    verticesX_rotated_B, verticesY_rotated_B, verticesZ_rotated_B, verticesI_B, verticesJ_B, verticesK_B = rotate_obj(filename_B, rot_x_axis_B, rot_y_axis_B, rot_z_axis_B)
+    scaled_vert_x_B, scaled_vert_y_B, scaled_vert_z_B, verticesI_B, verticesJ_B, verticesK_B = scale_obj(filename_B, scale_B)
+    verticesX_rotated_B, verticesY_rotated_B, verticesZ_rotated_B = rotate_obj(scaled_vert_x_B, scaled_vert_y_B, scaled_vert_z_B, rot_x_axis_B, rot_y_axis_B, rot_z_axis_B)
     verticesX_rotated_moved_B, verticesY_rotated_moved_B, verticesZ_rotated_moved_B = move_obj(x_axis_B, y_axis_B, z_axis_B, verticesX_rotated_B, verticesY_rotated_B, verticesZ_rotated_B)
 
-    plot_2obj_file(verticesX_rotated_moved_A, verticesY_rotated_moved_A, verticesZ_rotated_moved_A, verticesI_A, verticesJ_A, verticesK_A, verticesX_rotated_moved_B, verticesY_rotated_moved_B, verticesZ_rotated_moved_B, verticesI_B, verticesJ_B, verticesK_B)
-    
-def rotate_obj(filename, rot_x_axis, rot_y_axis, rot_z_axis):
+    fig = plot_2obj_file(verticesX_rotated_moved_A, verticesY_rotated_moved_A, verticesZ_rotated_moved_A, verticesI_A, verticesJ_A, verticesK_A, verticesX_rotated_moved_B, verticesY_rotated_moved_B, verticesZ_rotated_moved_B, verticesI_B, verticesJ_B, verticesK_B)
 
-    logging.debug("rotate")
+    return fig
+
+def scale_obj(filename, scale):
+
+    logging.debug("scaling")
 
     """Open .obj file"""
 
@@ -885,7 +1007,112 @@ def rotate_obj(filename, rot_x_axis, rot_y_axis, rot_z_axis):
     rel_path = f"obj/examples/{filename}.obj"
     abs_file_path = os.path.join(script_dir, rel_path)
 
+    scaled_vert_X = []
+    scaled_vert_Y = []
+    scaled_vert_Z = []
+
     verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK = open_obj_file(abs_file_path)
+
+    for x in verticesX:
+        x *= scale
+        scaled_vert_X.append(x)    
+
+    for y in verticesY:
+        y *= scale 
+        scaled_vert_Y.append(y)   
+
+    for z in verticesZ:
+        z *= scale  
+        scaled_vert_Z.append(z)  
+
+    return scaled_vert_X, scaled_vert_Y, scaled_vert_Z, verticesI, verticesJ, verticesK
+
+def rotate_move_obj_file(filename_A, x_axis_A, y_axis_A, z_axis_A, rot_x_axis_A, rot_y_axis_A, rot_z_axis_A, scale_A):
+    
+    scaled_vert_x_A, scaled_vert_y_A, scaled_vert_z_A, verticesI_A, verticesJ_A, verticesK_A = scale_obj(filename_A, scale_A)
+    verticesX_rotated_A, verticesY_rotated_A, verticesZ_rotated_A = rotate_obj(scaled_vert_x_A, scaled_vert_y_A, scaled_vert_z_A, rot_x_axis_A, rot_y_axis_A, rot_z_axis_A)
+    verticesX_rotated_moved_A, verticesY_rotated_moved_A, verticesZ_rotated_moved_A = move_obj(x_axis_A, y_axis_A, z_axis_A, verticesX_rotated_A, verticesY_rotated_A, verticesZ_rotated_A)    
+
+    plot_obj_file(verticesX_rotated_moved_A, verticesY_rotated_moved_A, verticesZ_rotated_moved_A, verticesI_A, verticesJ_A, verticesK_A)
+
+def rotate_move_obj_file_ray(filename_A, x_axis_A, y_axis_A, z_axis_A, rot_x_axis_A, rot_y_axis_A, rot_z_axis_A, ray_origin, ray_dest, triangle, scale):
+    
+    scaled_vert_x_A, scaled_vert_y_A, scaled_vert_z_A, verticesI_A, verticesJ_A, verticesK_A = scale_obj(filename_A, scale)
+    verticesX_rotated_A, verticesY_rotated_A, verticesZ_rotated_A = rotate_obj(scaled_vert_x_A, scaled_vert_y_A, scaled_vert_z_A, rot_x_axis_A, rot_y_axis_A, rot_z_axis_A)
+    verticesX_rotated_moved_A, verticesY_rotated_moved_A, verticesZ_rotated_moved_A = move_obj(x_axis_A, y_axis_A, z_axis_A, verticesX_rotated_A, verticesY_rotated_A, verticesZ_rotated_A)    
+
+    fig = go.Figure(data=[
+    go.Mesh3d(
+        x=verticesX_rotated_moved_A,
+        y=verticesY_rotated_moved_A,
+        z=verticesZ_rotated_moved_A,
+            
+        color='blue',
+        opacity=0.1,
+            
+        i=verticesI_A[0:-1],
+        j=verticesJ_A[0:-1],
+        k=verticesK_A[0:-1]
+        )
+    ])
+
+    x = [triangle.vertices[0][0], triangle.vertices[1][0], triangle.vertices[2][0]]
+    y = [triangle.vertices[0][1], triangle.vertices[1][1], triangle.vertices[2][1]]
+    z = [triangle.vertices[0][2], triangle.vertices[1][2], triangle.vertices[2][2]]
+
+    i = np.array([0])
+    j = np.array([1])
+    k = np.array([2])
+
+    fig.add_trace(go.Mesh3d(x=x, y=y, z=z, alphahull=5, opacity=0.4, color='red', i=i, j=j, k=k))
+    fig.add_trace(
+    go.Scatter3d(x=[ray_origin[0], ray_dest[0]],
+                 y=[ray_origin[1], ray_dest[1]],
+                 z=[ray_origin[2], ray_dest[2]],
+                 mode='lines'))
+    fig.show()
+
+    plot_obj_file(verticesX_rotated_moved_A, verticesY_rotated_moved_A, verticesZ_rotated_moved_A, verticesI_A, verticesJ_A, verticesK_A)
+
+def rotate_move_obj_file_ray_no_collision(filename_A, x_axis_A, y_axis_A, z_axis_A, rot_x_axis_A, rot_y_axis_A, rot_z_axis_A, ray_origin, ray_dest, scale):
+    
+    scaled_vert_x_A, scaled_vert_y_A, scaled_vert_z_A, verticesI_A, verticesJ_A, verticesK_A = scale_obj(filename_A, scale)
+    verticesX_rotated_A, verticesY_rotated_A, verticesZ_rotated_A = rotate_obj(scaled_vert_x_A, scaled_vert_y_A, scaled_vert_z_A, rot_x_axis_A, rot_y_axis_A, rot_z_axis_A)
+    verticesX_rotated_moved_A, verticesY_rotated_moved_A, verticesZ_rotated_moved_A = move_obj(x_axis_A, y_axis_A, z_axis_A, verticesX_rotated_A, verticesY_rotated_A, verticesZ_rotated_A)  
+
+    fig = go.Figure(data=[
+    go.Mesh3d(
+        x=verticesX_rotated_moved_A,
+        y=verticesY_rotated_moved_A,
+        z=verticesZ_rotated_moved_A,
+            
+        color='blue',
+        opacity=0.1,
+            
+        i=verticesI_A[0:-1],
+        j=verticesJ_A[0:-1],
+        k=verticesK_A[0:-1]
+        )
+    ])
+
+    fig.add_trace(
+    go.Scatter3d(x=[ray_origin[0], ray_dest[0]],
+                 y=[ray_origin[1], ray_dest[1]],
+                 z=[ray_origin[2], ray_dest[2]],
+                 mode='lines'))
+    fig.show()
+
+def rotate_obj(verticesX, verticesY, verticesZ, rot_x_axis, rot_y_axis, rot_z_axis):
+
+    logging.debug("rotate")
+
+    """Open .obj file"""
+
+    # script_dir = os.path.dirname(__file__) #<-- absolute dir the script is in
+    # rel_path = f"obj/examples/{filename}.obj"
+    # abs_file_path = os.path.join(script_dir, rel_path)
+
+    # verticesX, verticesY, verticesZ, verticesI, verticesJ, verticesK = open_obj_file(abs_file_path)
 
     centroid = [sum(verticesX)/len(verticesX), sum(verticesY)/len(verticesY), sum(verticesZ)/len(verticesZ)]
     logging.debug(f"centroid: {centroid}")
@@ -937,4 +1164,4 @@ def rotate_obj(filename, rot_x_axis, rot_y_axis, rot_z_axis):
     verticesY_rotated = rotated_points.tolist()[1]
     verticesZ_rotated = rotated_points.tolist()[2]
 
-    return verticesX_rotated, verticesY_rotated, verticesZ_rotated, verticesI, verticesJ, verticesK
+    return verticesX_rotated, verticesY_rotated, verticesZ_rotated

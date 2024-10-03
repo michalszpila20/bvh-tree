@@ -4,22 +4,21 @@ import numpy as np
 from collision_detection.collision_detection_utils import closest_pt_point_obb, test_triangle_against_triangle, descend_A, test_sphere_AABB, descend_A_iter
 import itertools
 import plotly.graph_objects as go
+import numba
+from numba import njit
+import cProfile
+import re
 
 def test_sphere_sphere(sphere_A, sphere_B):
 
-    center_A = np.array([sphere_A.get_bbox().centre[0], sphere_A.get_bbox().centre[1], sphere_A.get_bbox().centre[2]])
-    center_B = np.array([sphere_B.get_bbox().centre[0], sphere_B.get_bbox().centre[1], sphere_B.get_bbox().centre[2]])
+    center_A = np.array(sphere_A.get_bbox().centre)
+    center_B = np.array(sphere_B.get_bbox().centre)
+    radius_A = sphere_A.get_bbox().radius
+    radius_B = sphere_B.get_bbox().radius
 
     d = center_A - center_B
     dist2 = np.dot(d, d)
-
-    logging.debug(f"dist2: {dist2}")
-
-    radius_sum = sphere_A.get_bbox().radius + sphere_B.get_bbox().radius
-
-    logging.debug(f"radius_sum: {radius_sum}")
-
-    logging.debug(f"dist2 <= radius_sum * radius_sum: {dist2 <= radius_sum * radius_sum}")
+    radius_sum = radius_A + radius_B
 
     return dist2 <= radius_sum * radius_sum
 
@@ -90,46 +89,7 @@ def test_sphere_obb(sphere, obb):
     logging.debug(f"v: {v}")
     logging.debug(f"np.dot(v, v): {np.dot(v, v)}, radius^2: {radius * radius}, np.dot(v, v) <= radius * radius: {np.dot(v, v) <= radius * radius}")
 
-
     return np.dot(v, v) <= radius * radius, q
-
-def BVH_collision_sphere(tree_a, tree_b, index_a, index_b, bbox_type_B, collisions):
-
-    logging.debug(f"index_a: {index_a}")
-    logging.debug(f"index_b: {index_b}")
-
-    logging.debug(f"tree_a: {tree_a}")
-    logging.debug(f"tree_b: {tree_b}")
-
-    sphere_A = tree_a[index_a]
-    sphere_B = tree_b[index_b]
-
-    if bbox_type_B == "sphere":
-        if not test_sphere_sphere(sphere_A, sphere_B): return None
-    elif bbox_type_B == "aabb":
-        if not test_sphere_AABB(sphere_A.get_bbox(), sphere_B): return None
-    elif bbox_type_B == "obb":
-        result, q = test_sphere_obb(sphere_A, sphere_B)
-        if not result: return None
-
-    if sphere_A.is_leaf() and sphere_B.is_leaf():
-        logging.debug("Checking collisions on objects level.")
-        test_triangle_against_triangle(sphere_A, sphere_B, collisions)
-    else:
-        if descend_A(tree_a, index_a):
-            logging.debug("descend_A")
-            index_a_one = tree_a.index(sphere_A.left)
-            index_a_two = tree_a.index(sphere_A.right)
-            BVH_collision_sphere(tree_a, tree_b, index_a_one, index_b, bbox_type_B, collisions)
-            BVH_collision_sphere(tree_a, tree_b, index_a_two, index_b, bbox_type_B, collisions)
-        else:
-            logging.debug("descend_B")
-            index_b_one = tree_b.index(sphere_B.left)
-            index_b_two = tree_b.index(sphere_B.right)
-            BVH_collision_sphere(tree_a, tree_b, index_a, index_b_one, bbox_type_B, collisions)
-            BVH_collision_sphere(tree_a, tree_b, index_a, index_b_two, bbox_type_B, collisions)
-    
-    return collisions
 
 def BVH_collision_sphere_iterative(tree_a, tree_b, bbox_type_B):
     logging.debug("iterative BVH traversal")
@@ -151,7 +111,8 @@ def BVH_collision_sphere_iterative(tree_a, tree_b, bbox_type_B):
         if bbox_type_B == "aabb":
             if not test_sphere_AABB(aabb_a_temp.get_bbox(), aabb_b_temp): continue
         elif bbox_type_B == "sphere":
-            if not test_sphere_sphere(aabb_a_temp, aabb_b_temp): continue
+            result = test_sphere_sphere(aabb_a_temp, aabb_b_temp)
+            if not result: continue 
         elif bbox_type_B == "obb":
             result, q = test_sphere_obb(aabb_a_temp, aabb_b_temp)
             if not result: continue
@@ -188,7 +149,6 @@ def collision_detection_sphere(node_list_A, node_list_B, bbox_type_B):
 
     collisions = []
 
-    # collisions = BVH_collision_sphere(node_list_A, node_list_B, 0, 0, bbox_type_B, collisions)
     collisions = BVH_collision_sphere_iterative(node_list_A, node_list_B, bbox_type_B)
 
     logging.debug(f"collisions: {collisions}")

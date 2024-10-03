@@ -15,7 +15,6 @@ def test_triangle_against_triangle(aabb_a_temp, aabb_b_temp):
     for triangle_a in triangles_a:
         for triangle_b in triangles_b:
             logging.debug(f"triangle_a: {triangle_a}")
-        
             triangle_intersect = triangles_intersection_CGAL(triangle_a, triangle_b)
             logging.debug(f"triangle_intersect: {triangle_intersect}")
             if triangle_intersect:
@@ -143,3 +142,50 @@ def test_sphere_AABB(sphere, aabb):
     q = closest_pt_point_AABB(p, aabb)
     v = q - p
     return np.dot(v,v) <= sphere.radius * sphere.radius
+
+def test_AABB_OBB(aabb, obb):
+    
+    rotation_obb = obb.get_bbox().rotation
+
+    center_a = aabb.get_bbox().centre
+    center_b = obb.get_bbox().centre
+
+    half_extents_aabb = aabb.get_bbox().half_extents
+    half_extents_obb = obb.get_bbox().half_extents
+
+    EPSILON = 1e-6
+    radius = rotation_obb
+    abs_radius = np.abs(rotation_obb) + EPSILON
+
+    # Compute translation vector t between OBB centers and project it onto obb_a's local axes
+    t = center_b - center_a
+
+    # Axes L = A0, A1, A2
+    for i in range(3):
+        radius_a = half_extents_aabb[i]
+        radius_b = (half_extents_obb[0] * abs_radius[i, 0] +
+                    half_extents_obb[1] * abs_radius[i, 1] +
+                    half_extents_obb[2] * abs_radius[i, 2])
+        if abs(t[i]) > radius_a + radius_b:
+            return False
+
+    # Axes L = B0, B1, B2
+    for i in range(3):
+        radius_a = (half_extents_aabb[0] * abs_radius[0, i] +
+                    half_extents_aabb[1] * abs_radius[1, i] +
+                    half_extents_aabb[2] * abs_radius[2, i])
+        radius_b = half_extents_obb[i]
+        if abs(t[0] * radius[0, i] + t[1] * radius[1, i] + t[2] * radius[2, i]) > radius_a + radius_b:
+            return False
+
+    # Cross products of axes L = A0 x B0, A0 x B1, ..., A2 x B2
+    for i in range(3):
+        for j in range(3):
+            radius_a = (half_extents_aabb[(i+1)%3] * abs_radius[(i+2)%3, j] +
+                        half_extents_aabb[(i+2)%3] * abs_radius[(i+1)%3, j])
+            radius_b = (half_extents_obb[(j+1)%3] * abs_radius[i, (j+2)%3] +
+                        half_extents_obb[(j+2)%3] * abs_radius[i, (j+1)%3])
+            if abs(t[(i+2)%3] * radius[(i+1)%3, j] - t[(i+1)%3] * radius[(i+2)%3, j]) > radius_a + radius_b:
+                return False
+
+    return True

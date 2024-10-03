@@ -1,9 +1,9 @@
 import logging
 from OBB import OBB
-from bvh import BVHNode
+from node import Node
 from collision_detection.collision_detection_obb import test_obb_obb
 import numpy as np
-from collision_detection.collision_detection_utils import build_obb_from_aabb, descend_A, test_sphere_AABB, test_triangle_against_triangle, descend_A_iter
+from collision_detection.collision_detection_utils import build_obb_from_aabb, descend_A, test_sphere_AABB, test_triangle_against_triangle, descend_A_iter, test_AABB_OBB
 import plotly.graph_objects as go
 
 def test_AABB_AABB(aabb_a, aabb_b):
@@ -80,49 +80,6 @@ def plot_triangles_in_aabb(fig, aabb_a):
 
     return fig
 
-def BVH_collision_aabb_recusion(tree_a, tree_b, index_a, index_b, bbox_type_B, collisions):
-
-    logging.debug(f"index_a: {index_a}")
-    logging.debug(f"index_b: {index_b}")
-
-    logging.debug(f"tree_a: {tree_a}")
-    logging.debug(f"tree_b: {tree_b}")
-
-    aabb_a_temp = tree_a[index_a]
-    aabb_b_temp = tree_b[index_b]
-
-    if bbox_type_B == "sphere":
-        if not test_sphere_AABB(aabb_b_temp.get_bbox(), aabb_a_temp): return None
-    elif bbox_type_B == "aabb":
-        if not test_AABB_AABB(aabb_a_temp, aabb_b_temp): return None
-    elif bbox_type_B == "obb":
-        logging.debug("Add aabb - obb intersection test")
-        corners, center, diff, rotation = build_obb_from_aabb(aabb_a_temp)
-        obb_from_aabb = OBB(corners, center, diff, rotation)
-        temp_node = BVHNode(None)
-        temp_node.set_bbox(obb_from_aabb)
-        if not test_obb_obb(temp_node, aabb_b_temp): return None
-
-    if aabb_a_temp.is_leaf() and aabb_b_temp.is_leaf():
-        logging.debug("Checking collisions on objects level.")
-        tri_collisions = test_triangle_against_triangle(aabb_a_temp, aabb_b_temp, collisions)
-        logging.debug(f"tri_collisions: {len(tri_collisions)}")
-    else:
-        if descend_A(tree_a, index_a):
-            logging.debug("Descend A")
-            index_a_one = tree_a.index(aabb_a_temp.left)
-            index_a_two = tree_a.index(aabb_a_temp.right)
-            BVH_collision_aabb_recusion(tree_a, tree_b, index_a_one, index_b, bbox_type_B, collisions)
-            BVH_collision_aabb_recusion(tree_a, tree_b, index_a_two, index_b, bbox_type_B, collisions)
-        else:
-            logging.debug("Descend B")
-            index_b_one = tree_b.index(aabb_b_temp.left)
-            index_b_two = tree_b.index(aabb_b_temp.right)
-            BVH_collision_aabb_recusion(tree_a, tree_b, index_a, index_b_one, bbox_type_B, collisions)
-            BVH_collision_aabb_recusion(tree_a, tree_b, index_a, index_b_two, bbox_type_B, collisions)
-    
-    return collisions
-
 def BVH_collision_aabb_iterative(tree_a, tree_b, bbox_type_B):
     logging.debug("iterative BVH traversal")
 
@@ -146,11 +103,7 @@ def BVH_collision_aabb_iterative(tree_a, tree_b, bbox_type_B):
             if not test_sphere_AABB(aabb_b_temp.get_bbox(), aabb_a_temp): continue
         elif bbox_type_B == "obb":
             logging.debug("Add aabb - obb intersection test")
-            corners, center, diff, rotation = build_obb_from_aabb(aabb_a_temp)
-            obb_from_aabb = OBB(corners, center, diff, rotation)
-            temp_node = BVHNode(None)
-            temp_node.set_bbox(obb_from_aabb)
-            if not test_obb_obb(temp_node, aabb_b_temp): continue
+            if not test_AABB_OBB(aabb_a_temp, aabb_b_temp): continue
 
         if aabb_a_temp.is_leaf() and aabb_b_temp.is_leaf():
             logging.debug("Checking collisions on objects level.")
@@ -185,7 +138,6 @@ def collision_detection_AABB(node_list_A, node_list_B, bbox_type_B):
 
     collisions = []
 
-    # collisions = BVH_collision_aabb_recusion(node_list_A, node_list_B, 0, 0, bbox_type_B, collisions)
     collisions = BVH_collision_aabb_iterative(node_list_A, node_list_B, bbox_type_B)
     logging.debug(f"collisions: {collisions}")
     logging.debug(f"size of collisions: {len(collisions)}")

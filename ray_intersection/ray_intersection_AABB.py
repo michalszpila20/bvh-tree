@@ -1,14 +1,17 @@
 import math
 from obj_functions import open_obj_file
 import plotly.graph_objects as go
-from ray_intersection.ray_intersection_utils import intersect_line_triangle_boolean, intersect_line_triangle_closest
+from ray_intersection.ray_intersection_utils import intersect_line_triangle_closest, plot_triangle_ray
 import logging
+import sys
+import numpy as np
 
-def ray_intersection_AABB(ray_origin, ray_dest, mins, maxs):
 
-    rect_len_x = abs(mins[0]) + abs(maxs[0])
-    rect_len_y = abs(mins[1]) + abs(maxs[1])
-    rect_len_z = abs(mins[2]) + abs(maxs[2])
+def ray_intersection_AABB_CD(ray_origin, ray_dest, mins, maxs):
+
+    EPSILON = 1e-80
+    t_min = 0
+    t_max = sys.maxsize
 
     magnitude = math.sqrt(pow(ray_dest[0] - ray_origin[0], 2) + pow(ray_dest[1] - ray_origin[1], 2) + pow(ray_dest[2] - ray_origin[2], 2))
     vector_x_len = ray_dest[0] - ray_origin[0]
@@ -24,36 +27,58 @@ def ray_intersection_AABB(ray_origin, ray_dest, mins, maxs):
     dir_ray_Y = vector_y_len / magnitude
     dir_ray_Z = vector_z_len / magnitude
 
-    logging.debug(f"dir_ray_X: {dir_ray_X}")
-    logging.debug(f"dir_ray_Y: {dir_ray_Y}")
-    logging.debug(f"dir_ray_Z: {dir_ray_Z}")
-    
-    t_X_min = (mins[0] - ray_origin[0]) / dir_ray_X
-    t_Y_min = (mins[1] - ray_origin[1]) / dir_ray_Y
-    t_Z_min = (mins[2] - ray_origin[2]) / dir_ray_Z
+    dir_ray = np.array([dir_ray_X, dir_ray_Y, dir_ray_Z])
 
-    t_X_max = ((mins[0] + rect_len_x) - ray_origin[0]) / dir_ray_X
-    t_Y_max = ((mins[1] + rect_len_y) - ray_origin[1]) / dir_ray_Y
-    t_Z_max = ((mins[2] + rect_len_z) - ray_origin[2]) / dir_ray_Z
+    for i in range(3):
+        if np.abs(dir_ray[i]) < EPSILON:
+            if ray_origin[i] < mins[i] or ray_origin[i] > maxs[i]: return False
+        else:
+            ood = 1/dir_ray[i]
+            t1 = (mins[i] - ray_origin[i]) * ood
+            t2 = (maxs[i] - ray_origin[i]) * ood
 
-    t_X_near = min(t_X_min, t_X_max)
-    t_X_far = max(t_X_min, t_X_max)
+            if t1 > t2: t1, t2 = t2, t1
 
-    t_Y_near = min(t_Y_min, t_Y_max)
-    t_Y_far = max(t_Y_min, t_Y_max)
+            if t1 > t_min: t_min = t1
+            if t2 > t_max: t_max = t2
+            if t_min > t_max: return False
 
-    t_Z_near = min(t_Z_min, t_Z_max)
-    t_Z_far = max(t_Z_min, t_Z_max)
+    q = ray_origin + dir_ray * t_min
+    return True, t_min, q
 
-    t_near = max(t_X_near, t_Y_near, t_Z_near)
-    t_far = min(t_X_far, t_Y_far, t_Z_far)
+def ray_intersection_AABB(ray_origin, ray_dest, mins, maxs):
 
-    logging.debug(f"t_near is: {t_near}, t_far is: {t_far}")
+    logging.debug(f"ray_intersection_AABB")
 
-    if t_near < t_far and t_near >= 0 and t_near <= magnitude:
+    EPSILON = 1e-8  # Smaller epsilon for better precision
+
+    # Convert lists to NumPy arrays for element-wise operations
+    ray_origin = np.array(ray_origin)
+    ray_dest = np.array(ray_dest)
+    mins = np.array(mins)
+    maxs = np.array(maxs)
+
+    magnitude = np.linalg.norm(ray_dest - ray_origin)
+    dir_ray = (ray_dest - ray_origin) / (magnitude + EPSILON)  # Normalize ray direction
+
+    # Calculate intersections with box planes, handling divide-by-zero cases
+    t_min_vals = np.where(dir_ray != 0, (mins - ray_origin) / dir_ray, -np.inf)
+    t_max_vals = np.where(dir_ray != 0, (maxs - ray_origin) / dir_ray, np.inf)
+
+    # Determine the near and far intersection distances for each axis
+    t_near = max(min(t_min_vals[0], t_max_vals[0]),
+                 min(t_min_vals[1], t_max_vals[1]),
+                 min(t_min_vals[2], t_max_vals[2]))
+
+    t_far = min(max(t_min_vals[0], t_max_vals[0]),
+                max(t_min_vals[1], t_max_vals[1]),
+                max(t_min_vals[2], t_max_vals[2]))
+
+    # Check if there's a valid intersection
+    if t_near < t_far - EPSILON and 0 <= t_near <= magnitude + EPSILON:
         return True, t_near
     else:
-        return False, t_near
+        return False, None
 
 def plot_BVH_aabb_from_obj_with_ray(filename, ray_origin, ray_dest):
     
@@ -82,149 +107,71 @@ def plot_BVH_aabb_from_obj_with_ray(filename, ray_origin, ray_dest):
 
     fig.show()
 
-
-def intersection_AABB_boolean(ray_origin, ray_dest, node_list):
-
-    current_node = node_list[0]
-    node_stack = []
-
-    logging.debug(f"mins: {current_node}")
-    logging.debug(f"mins: {current_node.get_bbox()}")
-    logging.debug(f"mins: {current_node.get_bbox().mins}")
-
-    mins = current_node.get_bbox().mins
-    maxs = current_node.get_bbox().maxs
-
-    logging.debug("--------------------------------------------")
-
-    if not ray_intersection_AABB(ray_origin, ray_dest, mins, maxs):
-        logging.debug("No intersection in root node, returing False.")
-        return False
-    while 1:
-        if not current_node.is_leaf():
-
-            logging.debug("Current node is not leaf, checking children of this node.")
-            left_child_intersect = ray_intersection_AABB(ray_origin, ray_dest, current_node.left.get_bbox().mins, current_node.left.get_bbox().maxs)
-            right_child_intersect = ray_intersection_AABB(ray_origin, ray_dest, current_node.right.get_bbox().mins, current_node.right.get_bbox().maxs)
-            logging.debug(f"Left child intersect? {left_child_intersect}")
-            logging.debug(f"Right child intersect? {right_child_intersect}")
-            if left_child_intersect and right_child_intersect:
-                logging.debug("Both intersect.")
-                node_stack.append(current_node.right)
-                logging.debug(f"Node stack is: {node_stack}")
-                current_node = current_node.left
-                logging.debug(f"Curent node is: {current_node}, when both node were intersected.")
-                continue
-            elif left_child_intersect and not right_child_intersect:
-                current_node = current_node.left
-                logging.debug(f"Curent node is: {current_node}, when only one node was intersected (left).")
-                continue
-            elif not left_child_intersect and right_child_intersect:
-                current_node = current_node.right
-                logging.debug(f"Curent node is: {current_node}, when only one node was intersected (right).")
-                continue
-            else:
-                logging.debug("Both nodes were not hit, do nothing!")
-        else:
-            logging.debug("Final intersection!!!")
-            is_hit = intersect_line_triangle_boolean(current_node, ray_origin, ray_dest)
-            
-            logging.debug(f"is_hit after final intersection: {is_hit}")
-
-            if is_hit == True:
-                return True
-
-        current_node = node_stack.pop(0)
-        logging.debug(f"current_node after no hit: {current_node}")
-
-        if len(node_stack) == 0:
-            return False
-
 def intersection_AABB_closest(ray_origin, ray_dest, node_list):
-
     current_node = [node_list[0], 0]
     node_stack = []
-    
-    mins = current_node[0].get_bbox().mins
-    maxs = current_node[0].get_bbox().maxs
-    
-    logging.debug("--------------------------------------------")
-
     ray_dest_new = ray_dest 
     closest_hit = None
 
-    interesection_root, t_near_root = ray_intersection_AABB(ray_origin, ray_dest, mins, maxs)
+    # Initial root intersection check
+    intersection_root, t_near_root = ray_intersection_AABB(
+        ray_origin, ray_dest, 
+        current_node[0].get_bbox().mins, 
+        current_node[0].get_bbox().maxs
+    )
 
-    logging.debug(f"interesection_root: {interesection_root}")
-    logging.debug(f"t_near_root: {t_near_root}")
+    if not intersection_root:
+        return False, None, None
 
-    if not interesection_root:
-        logging.debug("No intersection in root node, returing False.")
-        return False
-    while 1:
+    while True:
+        # If node stack and current_node are empty, exit
+        if not node_stack and current_node is None:
+            return False, ray_dest_new, closest_hit if closest_hit else None
+
         if not current_node[0].is_leaf():
-            logging.debug("Current node is not leaf, checking children of this node.")
-            left_child_intersect, t_near_left = ray_intersection_AABB(ray_origin, ray_dest_new, current_node[0].left.get_bbox().mins, current_node[0].left.get_bbox().maxs)
-            right_child_intersect, t_near_right = ray_intersection_AABB(ray_origin, ray_dest_new, current_node[0].right.get_bbox().mins, current_node[0].right.get_bbox().maxs)
-            logging.debug(f"Left child intersect? {left_child_intersect}")
-            logging.debug(f"Right child intersect? {right_child_intersect}")
-            if left_child_intersect and right_child_intersect:
-                logging.debug("Both intersect.")
+            logging.debug(f"No leaf check intersecton")
+            # Check intersections with left and right children
+            left_child_intersect, t_near_left = ray_intersection_AABB(
+                ray_origin, ray_dest_new, 
+                current_node[0].left.get_bbox().mins, 
+                current_node[0].left.get_bbox().maxs
+            )
+            right_child_intersect, t_near_right = ray_intersection_AABB(
+                ray_origin, ray_dest_new, 
+                current_node[0].right.get_bbox().mins, 
+                current_node[0].right.get_bbox().maxs
+            )
 
+            if left_child_intersect and right_child_intersect:
+                # Put the furthest on the stack
                 if t_near_left < t_near_right:
                     node_stack.append([current_node[0].right, t_near_right])
-                    current_node[0] = current_node[0].left
-                    logging.debug("Left node is closer, traverse left node, right on stack.")
+                    current_node = [current_node[0].left, t_near_left]
                 else:
                     node_stack.append([current_node[0].left, t_near_left])
-                    current_node[0] = current_node[0].right
-                    logging.debug("Right node is closer, traverse right node, left on stack.")
-                
-                logging.debug(f"Node stack is: {node_stack}")
-                logging.debug(f"Curent node is: {current_node}, when both node were intersected.")
-                continue
-            elif left_child_intersect and not right_child_intersect:
-                current_node[0] = current_node[0].left
-                current_node[1] = t_near_left
-                logging.debug(f"Curent node is: {current_node}, when only one node was intersected (left).")
-                continue
-            elif not left_child_intersect and right_child_intersect:
-                current_node[0] = current_node[0].right
-                current_node[1] = t_near_right
-                logging.debug(f"Curent node is: {current_node}, when only one node was intersected (right).")
-                continue
+                    current_node = [current_node[0].right, t_near_right]
+            elif left_child_intersect:
+                current_node = [current_node[0].left, t_near_left]
+            elif right_child_intersect:
+                current_node = [current_node[0].right, t_near_right]
             else:
-                logging.debug("Both nodes were not hit, do nothing!")
-        else:
-            logging.debug("Final intersection!!!")
-            ray_dest_new, closest_hit = intersect_line_triangle_closest(current_node, ray_origin, ray_dest_new, closest_hit)
-            logging.debug(f"Function exit: ray_dest_new: {ray_dest_new}, closest_hit: {closest_hit}")
-        logging.debug(f"node_stack before while loop: {node_stack}")
-
-        while node_stack:
-
-            logging.debug(f"Ultimate node stack is: {node_stack}")
-
-            node = node_stack.pop(0)
-
-            logging.debug(f"node is in popping: {node}")
-            logging.debug(f"node is in popping [0]: {node[0]}")
-            logging.debug(f"node is in popping [1]: {node[1]}")
-            logging.debug(f"math.dist(ray_origin, ray_dest_new): {math.dist(ray_origin, ray_dest_new)}")
-
-            if node[1] < math.dist(ray_origin, ray_dest_new):
-                current_node = node
-                logging.debug(f"Current node: {current_node}, node[1] < ray_dest_new!")
-                break
-            elif node[1] > math.dist(ray_origin, ray_dest_new):
-                logging.debug(f"Current node: {current_node}, node[1] > ray_dest_new!!")
-
-            logging.debug(f"node stack after loop is: {node_stack}")
-
-        logging.debug(f"length of node stack {len(node_stack)}")
-        if len(node_stack) == 0:
-                logging.debug(f"{closest_hit}, {ray_dest_new}")
-                if closest_hit != None:
-                    return True, ray_dest_new, closest_hit
+                # No intersections, pop the next node if available
+                if node_stack:
+                    logging.debug(f"pop stack 1")
+                    current_node = node_stack.pop()
                 else:
-                    return False, ray_dest_new, closest_hit
+                    break
+        else:
+            # Leaf node - perform intersection with each primitive
+            ray_dest_new, closest_hit = intersect_line_triangle_closest(current_node, ray_origin, ray_dest_new, closest_hit)
+
+            if closest_hit:
+                # plot_triangle_ray(closest_hit, ray_origin, ray_dest_new)
+                return True, ray_dest_new, closest_hit
+
+            # Pop the next node if available
+            if node_stack:
+                logging.debug(f"pop stack 2")
+                current_node = node_stack.pop()
+            else:
+                return False, ray_dest_new, closest_hit if closest_hit else None

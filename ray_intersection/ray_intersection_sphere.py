@@ -1,91 +1,159 @@
 import logging
-from ray_intersection.ray_intersection_utils import intersect_line_triangle_boolean, intersect_line_triangle_closest
+from ray_intersection.ray_intersection_utils import intersect_line_triangle_closest, plot_triangle_ray
 import math
+import numpy as np
+import plotly.graph_objects as go
+import time
 
-def ray_intersection_sphere(centre, radius, ray_origin, ray_dest):
-
-    x1 = ray_origin[0]
-    y1 = ray_origin[1] 
-    z1 = ray_origin[2]
-
-    x2 = ray_dest[0]
-    y2 = ray_dest[1]
-    z2 = ray_dest[2]
+def ray_intersect_sphere_dist(centre, radius, ray_origin, ray_dest):
     
-    x3 = centre[0]
-    y3 = centre[1]
-    z3 = centre[2]
+    logging.debug(f"ray_intersect_sphere_dist")
 
-    logging.debug(f"x3: {x3}")
-    logging.debug(f"y3: {y3}")
-    logging.debug(f"z3: {z3}")
+    magnitude = math.sqrt(pow(ray_dest[0] - ray_origin[0], 2) + pow(ray_dest[1] - ray_origin[1], 2) + pow(ray_dest[2] - ray_origin[2], 2))
+    vector_x_len = ray_dest[0] - ray_origin[0]
+    vector_y_len = ray_dest[1] - ray_origin[1]
+    vector_z_len = ray_dest[2] - ray_origin[2]
 
-    a = pow(x2 - x1, 2) + pow(y2 - y1, 2) + pow(z2 - z1, 2)
-    b = 2 * ((x2 - x1)*(x1 - x3) + (y2 - y1)*(y1 - y3) + (z2 - z1)*(z1 - z3))
-    c = pow(x3, 2) + pow(y3, 2) + pow(z3, 2) + pow(x1, 2) + pow(y1, 2) + pow(z1, 2) - 2*((x3 * x1) + (y3*y1) + (z3*z1)) - pow(radius, 2)
-    end_val = b * b - 4 * a * c
+    logging.debug(f"magnitude: {magnitude}")
+    logging.debug(f"vector_x_len: {vector_x_len}")
+    logging.debug(f"vector_y_len: {vector_y_len}")
+    logging.debug(f"vector_z_len: {vector_z_len}")
 
-    logging.debug(f"end_val: {end_val}")
+    dir_ray_X = vector_x_len / magnitude
+    dir_ray_Y = vector_y_len / magnitude
+    dir_ray_Z = vector_z_len / magnitude
+
+    d = np.array([dir_ray_X, dir_ray_Y, dir_ray_Z])
+    logging.debug(f"d: {d}")
+
+    m = ray_origin - np.array(centre)
+    b = np.dot(m, d)
+    c = np.dot(m, m) - radius * radius
     
-    if end_val < 0:
-        logging.debug("There is no intersection!")
-        return False, end_val
-    elif end_val >= 0:
-        logging.debug("There is an intersection!")
-        return True, end_val
+    logging.debug(f"m: {m}")
+    logging.debug(f"b: {b}")
+    logging.debug(f"c: {c}")
 
-def intersection_sphere_boolean(ray_origin, ray_dest, node_list):
+    if c > 0 and b > 0:
+        return False, None, None
+    discr = b*b - c
 
-    current_node = node_list[0]
-    node_stack = []
+    logging.debug(f"discr: {discr}")
 
-    centre = current_node.get_bbox().centre
-    radius = current_node.get_bbox().radius
+    if discr < 0:
+        return False, None, None
 
-    logging.debug("--------------------------------------------")
+    t = -b - np.sqrt(discr)
+    logging.debug(f"t: {t}")
 
-    if not ray_intersection_sphere(centre, radius, ray_origin, ray_dest):
-        logging.debug("No intersection in root node, returing False.")
-        return False
-    while 1:
-        if not current_node.is_leaf():
+    if t < 0: t = 0
+    q = ray_origin + t * d
+    logging.debug(f"q: {q}")
 
-            logging.debug("Current node is not leaf, checking children of this node.")
-            left_child_intersect = ray_intersection_sphere(current_node.left.get_bbox().centre, current_node.left.get_bbox().radius, ray_origin, ray_dest)
-            right_child_intersect = ray_intersection_sphere(current_node.right.get_bbox().centre, current_node.right.get_bbox().radius, ray_origin, ray_dest)
-            logging.debug(f"Left child intersect? {left_child_intersect}")
-            logging.debug(f"Right child intersect? {right_child_intersect}")
-            if left_child_intersect and right_child_intersect:
-                logging.debug("Both intersect.")
-                node_stack.append(current_node.right)
-                logging.debug(f"Node stack is: {node_stack}")
-                current_node = current_node.left
-                logging.debug(f"Curent node is: {current_node}, when both node were intersected.")
-                continue
-            elif left_child_intersect and not right_child_intersect:
-                current_node = current_node.left
-                logging.debug(f"Curent node is: {current_node}, when only one node was intersected (left).")
-                continue
-            elif not left_child_intersect and right_child_intersect:
-                current_node = current_node.right
-                logging.debug(f"Curent node is: {current_node}, when only one node was intersected (right).")
-                continue
-            else:
-                logging.debug("Both nodes were not hit, do nothing!")
-        else:
-            logging.debug("Final intersection!!!")
-            is_hit = intersect_line_triangle_boolean(current_node, ray_origin, ray_dest)
-            
-            logging.debug(f"is_hit after final intersection: {is_hit}")
+    return True, t, q
 
-            if is_hit == True:
-                return True
+def plot_2sphere_ray(ray_origin, ray_dest, centre_A, radius_A, centre_B, radius_B, q_left, q_right):
 
-        current_node = node_stack.pop(0)
-        logging.debug(f"current_node after no hit: {current_node}")
+    fig = go.Figure()
+    
+    resolution=101
+    xA = centre_A[0]
+    yA = centre_A[1]
+    zA = centre_A[2]
 
-        if len(node_stack) == 0:
-            return False
+    xB = centre_B[0]
+    yB = centre_B[1]
+    zB = centre_B[2]
+
+    uA, vA = np.mgrid[0:2*np.pi:resolution*2j, 0:np.pi:resolution*1j]
+    XA = radius_A * np.cos(uA)*np.sin(vA) + xA
+    YA = radius_A * np.sin(uA)*np.sin(vA) + yA
+    ZA = radius_A * np.cos(vA) + zA
+
+    uB, vB = np.mgrid[0:2*np.pi:resolution*2j, 0:np.pi:resolution*1j]
+    XB = radius_B * np.cos(uB)*np.sin(vB) + xB
+    YB = radius_B * np.sin(uB)*np.sin(vB) + yB
+    ZB = radius_B * np.cos(vB) + zB
+
+    data_plotly = go.Surface(x=XA, y=YA, z=ZA, opacity=0.5)
+
+    fig = go.Figure(data=data_plotly)
+
+    fig.add_trace(go.Surface(x=XB, y=YB, z=ZB, opacity=0.5))
+
+    fig.add_trace(
+    go.Scatter3d(x=[ray_origin[0], ray_dest[0]],
+                 y=[ray_origin[1], ray_dest[1]],
+                 z=[ray_origin[2], ray_dest[2]],
+                 mode='lines'))
+    
+    if not q_left is None:
+        fig.add_trace(
+        go.Scatter3d(x=[q_left[0]],
+                    y=[q_left[1]],
+                    z=[q_left[2]],
+                    mode='markers'))
+        
+    if not q_right is None:
+        fig.add_trace(
+        go.Scatter3d(x=[q_right[0]],
+                    y=[q_right[1]],
+                    z=[q_right[2]],
+                    mode='markers'))
+
+    fig.show()
+    time.sleep(5)
+
+def print_triangles_ray(current_node, ray_origin, ray_dest):
+
+    fig = go.Figure()
+
+    triangles = current_node[0].get_triangles()
+
+    x = []
+    y = []
+    z = []    
+
+    i = []
+    j = []
+    k = []
+
+    num = 0
+    for triangle in triangles:
+
+        x.append(triangle.vertices[0][0])
+        x.append(triangle.vertices[1][0])
+        x.append(triangle.vertices[2][0])
+
+        y.append(triangle.vertices[0][1])
+        y.append(triangle.vertices[1][1])
+        y.append(triangle.vertices[2][1])
+
+        z.append(triangle.vertices[0][2])
+        z.append(triangle.vertices[1][2])
+        z.append(triangle.vertices[2][2])
+
+        logging.debug(f"---------------------------------")
+
+        logging.debug(f"x: {x}")
+        logging.debug(f"y: {y}")
+        logging.debug(f"z: {z}")
+
+    
+        i.append([3 * num])
+        j.append([(3 * num) + 1])
+        k.append([(3 * num) + 2])
+        num += 1 
+
+    fig.add_trace(go.Mesh3d(x=x, y=y, z=z, alphahull=5, opacity=0.4, color='red', i=i, j=j, k=k))
+
+    fig.add_trace(
+    go.Scatter3d(x=[ray_origin[0], ray_dest[0]],
+                 y=[ray_origin[1], ray_dest[1]],
+                 z=[ray_origin[2], ray_dest[2]],
+                 mode='lines'))
+
+    fig.show()
 
 def intersection_sphere_closest(ray_origin, ray_dest, node_list):
 
@@ -100,73 +168,46 @@ def intersection_sphere_closest(ray_origin, ray_dest, node_list):
     ray_dest_new = ray_dest 
     closest_hit = None
 
-    if not ray_intersection_sphere(centre, radius, ray_origin, ray_dest):
+    is_intersect, t, q = ray_intersect_sphere_dist(centre, radius, ray_origin, ray_dest)
+
+    if not is_intersect:
         logging.debug("No intersection in root node, returing False.")
         return False
     while 1:
         if not current_node[0].is_leaf():
             logging.debug("Current node is not leaf, checking children of this node.")
-            left_child_intersect, t_near_left = ray_intersection_sphere(current_node[0].left.get_bbox().centre, current_node[0].left.get_bbox().radius, ray_origin, ray_dest_new)
-            right_child_intersect, t_near_right = ray_intersection_sphere(current_node[0].right.get_bbox().centre, current_node[0].right.get_bbox().radius, ray_origin, ray_dest_new)
+            left_child_intersect, t_near_left, q_left = ray_intersect_sphere_dist(current_node[0].left.get_bbox().centre, current_node[0].left.get_bbox().radius, ray_origin, ray_dest_new)
+            right_child_intersect, t_near_right, q_right = ray_intersect_sphere_dist(current_node[0].right.get_bbox().centre, current_node[0].right.get_bbox().radius, ray_origin, ray_dest_new)
             logging.debug(f"Left child intersect? {left_child_intersect}")
             logging.debug(f"Right child intersect? {right_child_intersect}")
             if left_child_intersect and right_child_intersect:
-                logging.debug("Both intersect.")
-
+                # Put the furthest on the stack
                 if t_near_left < t_near_right:
                     node_stack.append([current_node[0].right, t_near_right])
-                    current_node[0] = current_node[0].left
-                    logging.debug("Left node is closer, traverse left node, right on stack.")
+                    current_node = [current_node[0].left, t_near_left]
                 else:
                     node_stack.append([current_node[0].left, t_near_left])
-                    current_node[0] = current_node[0].right
-                    logging.debug("Right node is closer, traverse right node, left on stack.")
-                
-                logging.debug(f"Node stack is: {node_stack}")
-                logging.debug(f"Curent node is: {current_node}, when both node were intersected.")
-                continue
-            elif left_child_intersect and not right_child_intersect:
-                current_node[0] = current_node[0].left
-                current_node[1] = t_near_left
-                logging.debug(f"Curent node is: {current_node}, when only one node was intersected (left).")
-                continue
-            elif not left_child_intersect and right_child_intersect:
-                current_node[0] = current_node[0].right
-                current_node[1] = t_near_right
-                logging.debug(f"Curent node is: {current_node}, when only one node was intersected (right).")
-                continue
+                    current_node = [current_node[0].right, t_near_right]
+            elif left_child_intersect:
+                current_node = [current_node[0].left, t_near_left]
+            elif right_child_intersect:
+                current_node = [current_node[0].right, t_near_right]
             else:
-                logging.debug("Both nodes were not hit, do nothing!")
-        else:
-            logging.debug("Final intersection!!!")
-            ray_dest_new, closest_hit = intersect_line_triangle_closest(current_node, ray_origin, ray_dest_new, closest_hit)
-            logging.debug(f"Function exit: ray_dest_new: {ray_dest_new}, closest_hit: {closest_hit}")
-        logging.debug(f"node_stack before while loop: {node_stack}")
-
-        while node_stack:
-
-            logging.debug(f"Ultimate node stack is: {node_stack}")
-
-            node = node_stack.pop(0)
-
-            logging.debug(f"node is in popping: {node}")
-            logging.debug(f"node is in popping [0]: {node[0]}")
-            logging.debug(f"node is in popping [1]: {node[1]}")
-            logging.debug(f"math.dist(ray_origin, ray_dest_new): {math.dist(ray_origin, ray_dest_new)}")
-
-            if node[1] < math.dist(ray_origin, ray_dest_new):
-                current_node = node
-                logging.debug(f"Current node: {current_node}, node[1] < ray_dest_new!")
-                break
-            elif node[1] > math.dist(ray_origin, ray_dest_new):
-                logging.debug(f"Current node: {current_node}, node[1] > ray_dest_new!!")
-
-            logging.debug(f"node stack after loop is: {node_stack}")
-
-        logging.debug(f"length of node stack {len(node_stack)}")
-        if len(node_stack) == 0:
-                logging.debug(f"{closest_hit}, {ray_dest_new}")
-                if closest_hit != None:
-                    return True, ray_dest_new, closest_hit
+                # No intersections, pop the next node if available
+                if node_stack:
+                    current_node = node_stack.pop()
                 else:
-                    return False, ray_dest_new, closest_hit
+                    break
+        else:
+            # Leaf node - perform intersection with each primitive
+            ray_dest_new, closest_hit = intersect_line_triangle_closest(current_node, ray_origin, ray_dest_new, closest_hit)
+
+            if closest_hit:
+                # plot_triangle_ray(closest_hit, ray_origin, ray_dest_new)
+                return True, ray_dest_new, closest_hit
+
+            # Pop the next node if available
+            if node_stack:
+                current_node = node_stack.pop()
+            else:
+                return False, ray_dest_new, closest_hit if closest_hit else None

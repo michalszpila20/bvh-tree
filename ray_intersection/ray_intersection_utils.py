@@ -68,84 +68,19 @@ def plot_OBB_ray(node_list_A, ray_origin, ray_dest):
     
     fig.show()
 
-def intersect_line_triangle_boolean(current_node, ray_origin, ray_dest):
-
-    triangles = current_node.get_triangles()
-    logging.debug(f"triangles: {triangles}")
-
-    logging.debug("Testing a line and a triangle!")
-
-    ray_dest_new = ray_dest
-
-    for triangle in triangles:
-
-        logging.debug(f"triangle.vertices: {triangle.vertices}")
-
-        a = np.array([triangle.vertices[0][0], triangle.vertices[0][1], triangle.vertices[0][2]])
-        b = np.array([triangle.vertices[1][0], triangle.vertices[1][1], triangle.vertices[1][2]])
-        c = np.array([triangle.vertices[2][0], triangle.vertices[2][1], triangle.vertices[2][2]])
-
-        p = np.array(ray_origin)
-        q = np.array(ray_dest)
-
-        pq = q - p
-        pa = a - p
-        pb = b - p
-        pc = c - p
-
-        cross_pc = np.cross(pq, pc)
-        cross_pa = np.cross(pq, pa)
-        cross_pb = np.cross(pq, pb)
-
-        u = np.dot(pb, cross_pc)
-        v = np.dot(pc, cross_pa)
-        w = np.dot(pa, cross_pb)
-
-        uvw = [u, v, w]
-
-        if all(item >= 0 for item in uvw) or all(item < 0 for item in uvw):
-            logging.debug("u,v,w have the same sign.")
-        else:
-            logging.debug("u,v,w does not have the same sign.")
-            continue
-
-        denom = 1 / (u + v + w)
-        u *= denom
-        v *= denom
-        w *= denom
-
-        r = u * a + v * b + w * c
-
-        logging.debug(f"r: {r}")
-
-        if math.dist(ray_dest_new, ray_origin) > math.dist(r, ray_origin):
-            ray_dest_new = r
-            plot_triangle_ray(triangle, ray_origin, ray_dest_new)
-            return True
-        else:
-            continue
-
-    return False
-
 def intersect_line_triangle_closest(current_node, ray_origin, ray_dest, closest_hit):
 
+    logging.debug("intersect_line_triangle_closest")
+
     triangles = current_node[0].get_triangles()
-
-    logging.debug(f"triangles: {triangles}")
-
-    logging.debug("Testing a line and a triangle!")
-
     ray_dest_new = ray_dest
     closest_hit_new = closest_hit
 
     for triangle in triangles:
-
-        logging.debug(f"triangle.vertices: {triangle.vertices}")
-
-        a = np.array([triangle.vertices[0][0], triangle.vertices[0][1], triangle.vertices[0][2]])
-        b = np.array([triangle.vertices[1][0], triangle.vertices[1][1], triangle.vertices[1][2]])
-        c = np.array([triangle.vertices[2][0], triangle.vertices[2][1], triangle.vertices[2][2]])
-
+        a = np.array(triangle.vertices[0])
+        b = np.array(triangle.vertices[1])
+        c = np.array(triangle.vertices[2])
+        
         p = np.array(ray_origin)
         q = np.array(ray_dest)
 
@@ -162,28 +97,17 @@ def intersect_line_triangle_closest(current_node, ray_origin, ray_dest, closest_
         v = np.dot(pc, cross_pa)
         w = np.dot(pa, cross_pb)
 
-        uvw = [u, v, w]
-
-        if all(item >= 0 for item in uvw) or all(item < 0 for item in uvw):
-            logging.debug("u,v,w have the same sign.")
-        else:
-            logging.debug("u,v,w does not have the same sign.")
+        if not (all(val >= 0 for val in [u, v, w]) or all(val <= 0 for val in [u, v, w])):
             continue
 
         denom = 1 / (u + v + w)
-        u *= denom
-        v *= denom
-        w *= denom
+        u, v, w = u * denom, v * denom, w * denom
+        intersection_point = u * a + v * b + w * c
 
-        r = u * a + v * b + w * c
-
-        logging.debug(f"r: {r}")
-
-        if math.dist(ray_dest_new, ray_origin) > math.dist(r, ray_origin):
-            ray_dest_new = r
+        if closest_hit_new is None or math.dist(intersection_point, ray_origin) < math.dist(ray_dest_new, ray_origin):
+            ray_dest_new = intersection_point
             closest_hit_new = triangle
-            logging.debug(f"closest_hit_new: {closest_hit_new} inside if")
 
-        plot_triangle_ray(triangle, ray_origin, ray_dest_new)
+    logging.debug(f"Result: {closest_hit_new}")
 
     return ray_dest_new, closest_hit_new
