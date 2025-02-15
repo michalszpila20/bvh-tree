@@ -137,7 +137,7 @@ def plot_two_obj_file(filename_A, filename_B):
 
     return fig
 
-def calculate_box_AABB(obj_list_copy, test_type):
+def calculate_box_AABB(obj_list_copy):
 
     vertices_x = []
     vertices_y = []
@@ -160,27 +160,25 @@ def calculate_box_AABB(obj_list_copy, test_type):
     min_s = [min(vertices_x), min(vertices_y), min(vertices_z)]
     max_s = [max(vertices_x), max(vertices_y), max(vertices_z)]
 
-    if test_type == "b":
+    
 
-        half_extents = (np.array(max_s) - np.array(min_s)) / 2
-        center = min_s + half_extents
-        diff = half_extents
+    half_extents = (np.array(max_s) - np.array(min_s)) / 2
+    center = min_s + half_extents
+    diff = half_extents
 
-        corners = np.array([center + [-diff[0], -diff[1], -diff[2]],
-                            center + [diff[0], diff[1], diff[2]],
-                            center + [diff[0], -diff[1], diff[2]],
-                            center + [diff[0], -diff[1], -diff[2]],
-                            center + [diff[0], diff[1], -diff[2]],
-                            center + [-diff[0], diff[1], diff[2]],
-                            center + [-diff[0], -diff[1], diff[2]],
-                            center + [-diff[0], diff[1], -diff[2]]])
+    corners = np.array([center + [-diff[0], -diff[1], -diff[2]],
+                        center + [diff[0], diff[1], diff[2]],
+                        center + [diff[0], -diff[1], diff[2]],
+                        center + [diff[0], -diff[1], -diff[2]],
+                        center + [diff[0], diff[1], -diff[2]],
+                        center + [-diff[0], diff[1], diff[2]],
+                        center + [-diff[0], -diff[1], diff[2]],
+                        center + [-diff[0], diff[1], -diff[2]]])
         
-        rotation = np.eye(3)
+    rotation = np.eye(3)
 
-        world_box = AABB(min_s, max_s, corners, center, half_extents, rotation)
-    else:
-        world_box = AABB(min_s, max_s)
-
+    world_box = AABB(min_s, max_s, corners, center, half_extents, rotation)
+    
     return world_box
 
 def adjust_sphere(sphere, point):
