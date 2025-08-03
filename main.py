@@ -8,7 +8,7 @@ from ray_intersection.ray_intersection import ray_intersect
 from ray_intersection.ray_intersection_AABB import plot_BVH_aabb_from_obj_with_ray
 import logging
 from collision_detection.collision_detection import BVH_collision_detection
-from collision_detection.collision_detection_AABB import plot_triangles_in_aabb
+from collision_detection.collision_detection_AABB import plot_triangles_in_aabb, test_AABB_AABB
 import plotly.graph_objects as go
 import numpy as np
 import tracemalloc
@@ -16,6 +16,7 @@ import time
 from dataclasses import dataclass
 from typing import List
 from dataclasses import asdict
+import os
 
 #vertices coordiantes
 verticesX = []
@@ -268,25 +269,38 @@ def build_recursive(node, node_list, config):
         node_list.append(node.right)
         build_recursive(node.left, node_list, config)
         build_recursive(node.right, node_list, config)
-        
-def main():
 
+def simple_CD_test():
     node_list_A = []
 
-    position = Position(0, 0, 0, 0, 0, 0, 1)
-    config = Config("cow", "aabb", 4)
+    position_A = Position(0, 0, 0, 0, 0, 0, 1)
+    config_A = Config("buddha", "aabb", 4)
 
-    node_list_A = build(node_list_A, config, position)
+    node_list_A = build(node_list_A, config_A, position_A)
 
-    if config.bbox_type == "aabb":
-        all_aabb_file = save_obj_aabb(node_list_A, config.filename)
+    if config_A.bbox_type == "aabb":
+        all_aabb_file = save_obj_aabb(node_list_A, config_A.filename)
         plot_BVH_from_obj(all_aabb_file)
-    elif config.bbox_type == "sphere":
-        all_sphere_file = save_obj_sphere(node_list_A, 6, config.filename)
+    elif config_A.bbox_type == "sphere":
+        all_sphere_file = save_obj_sphere(node_list_A, 6, config_A.filename)
         plot_BVH_from_obj(all_sphere_file)
-    elif config.bbox_type == "obb":
-        all_obb_file = save_obj_obb(node_list_A, config.filename)
+    elif config_A.bbox_type == "obb":
+        all_obb_file = save_obj_obb(node_list_A, config_A.filename)
         plot_BVH_from_obj(all_obb_file)
+
+    node_list_B = []
+
+    position_B = Position(0.7, 0, 0, 0, 30, 0, 1)
+    config_B = Config("dragon", "aabb", 4)
+
+    node_list_B = build(node_list_B, config_B, position_B)
+
+    collisions = BVH_collision_detection(node_list_A, node_list_B, "aabb", "aabb")
+    print(f"collisions: {len(collisions)}")
+
+def main():
+    simple_CD_test()
+    
   
 if __name__ == "__main__":
 

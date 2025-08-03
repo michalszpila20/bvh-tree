@@ -1,6 +1,5 @@
 import logging
 import numpy as np
-from CGAL.CGAL_Kernel import Point_3, Triangle_3, do_intersect
 
 def test_triangle_against_triangle(aabb_a_temp, aabb_b_temp):
 
@@ -14,8 +13,9 @@ def test_triangle_against_triangle(aabb_a_temp, aabb_b_temp):
 
     for triangle_a in triangles_a:
         for triangle_b in triangles_b:
+            axes = calculate_axes(triangle_a, triangle_b)
             logging.debug(f"triangle_a: {triangle_a}")
-            triangle_intersect = triangles_intersection_CGAL(triangle_a, triangle_b)
+            triangle_intersect = not test_separating_axis(axes, triangle_a, triangle_b)
             logging.debug(f"triangle_intersect: {triangle_intersect}")
             if triangle_intersect:
                 tri_collisions.append([triangle_a, triangle_b])
@@ -23,25 +23,72 @@ def test_triangle_against_triangle(aabb_a_temp, aabb_b_temp):
 
     return tri_collisions
 
-def triangles_intersection_CGAL(triangle_a, triangle_b):
+def test_separating_axis(axes, triangle_A, triangle_B):
+    
+    p1, p2, p3 = triangle_A.vertices
+    q1, q2, q3 = triangle_B.vertices
 
-    a = Point_3(triangle_a.vertices[0][0], triangle_a.vertices[0][1], triangle_a.vertices[0][2])
-    b = Point_3(triangle_a.vertices[1][0], triangle_a.vertices[1][1], triangle_a.vertices[1][2])
-    c = Point_3(triangle_a.vertices[2][0], triangle_a.vertices[2][1], triangle_a.vertices[2][2])
+    p1 = np.array(p1)
+    p2 = np.array(p2)
+    p3 = np.array(p3)
 
-    p = Point_3(triangle_b.vertices[0][0], triangle_b.vertices[0][1], triangle_b.vertices[0][2])
-    q = Point_3(triangle_b.vertices[1][0], triangle_b.vertices[1][1], triangle_b.vertices[1][2])
-    k = Point_3(triangle_b.vertices[2][0], triangle_b.vertices[2][1], triangle_b.vertices[2][2])
+    q1 = np.array(q1)
+    q2 = np.array(q2)
+    q3 = np.array(q3)
 
-    triangle1 = Triangle_3(a, b, c)
-    triangle2 = Triangle_3(p, q, k)
+    for axis in axes:
 
-    result = do_intersect(triangle1, triangle2)
-    logging.debug(f"Intersection result: {result}")
-    if result:
-        return True
-    else:
-        return False
+        dot_A_1 = np.dot(p1, axis)
+        dot_A_2 = np.dot(p2, axis)
+        dot_A_3 = np.dot(p3, axis)
+
+        min_A = min(dot_A_1, dot_A_2, dot_A_3)
+        max_A = max(dot_A_1, dot_A_2, dot_A_3)
+
+        dot_B_1 = np.dot(q1, axis)
+        dot_B_2 = np.dot(q2, axis)
+        dot_B_3 = np.dot(q3, axis)
+
+        min_B = min(dot_B_1, dot_B_2, dot_B_3)
+        max_B = max(dot_B_1, dot_B_2, dot_B_3)
+
+        if max_A < min_B or max_B < min_A:
+            return True
+        
+    return False
+
+def calculate_axes(triangle_A, triangle_B):
+
+    p1, p2, p3 = triangle_A.vertices
+    q1, q2, q3 = triangle_B.vertices
+
+    p1 = np.array(p1)
+    p2 = np.array(p2)
+    p3 = np.array(p3)
+
+    q1 = np.array(q1)
+    q2 = np.array(q2)
+    q3 = np.array(q3)
+
+    triangle_p_normal = np.cross(p2 - p1, p3 - p1)
+    triangle_q_normal = np.cross(q2 - q1, q3 - q1)
+
+    edges_p = [p2 - p1, p3 - p2, p1 - p3]
+    edges_q = [q2 - q1, q3 - q2, q1 - q3]
+
+    axes = [triangle_p_normal, triangle_q_normal]
+    for edge_p in edges_p:
+        for edge_q in edges_q:
+            cross_product = np.cross(edge_p, edge_q)
+            magnitude = np.linalg.norm(cross_product)
+
+            if magnitude <= 1e-10:
+                continue
+
+            axis_norm = cross_product / magnitude
+            axes.append(axis_norm)
+
+    return axes
 
 def descend_larger_method(tree_a, tree_b, index_a, index_b):
 

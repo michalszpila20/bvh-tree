@@ -4,8 +4,6 @@ import numpy as np
 from collision_detection.collision_detection_utils import closest_pt_point_obb, test_triangle_against_triangle, descend_A, test_sphere_AABB, descend_A_iter
 import itertools
 import plotly.graph_objects as go
-import numba
-from numba import njit
 import cProfile
 import re
 
